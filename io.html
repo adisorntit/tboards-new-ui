@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
+    <title>T-BOARD GEN3 (UI2026)</title>
+</head>
+<body>
+    <div class="container">
+        <div class="top">
+            <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
+            <div class="btn-group"></div>
+        </div>
+        <div class="middle">
+            <div class="m-left">
+                <div class="m-left-inner">
+                    <div class="m-left-menu">
+                    </div>
+                </div>
+            </div>
+            <div class="m-right">
+                <div class="m-right-inner">
+                    <!-- ----------------------------- -->
+                    <div class="inputs-list border-basic" style="display: flex; flex-direction: column; gap: .3rem; margin:1rem; padding:1rem;">
+                        <h4>อินพุต</h4>
+                        <form id="inputs-form"></form>
+                    </div>
+                    <div class="outputs-list border-basic" style="display: flex; flex-direction: column; gap: .3rem; margin:1rem; padding:1rem;">
+                        <h4>เอาท์พุต</h4>
+                        <form id="outputs-form"></form>
+                     </div>
+                    <!-- ----------------------------- -->                    
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="./js/common.js"></script>
+<script>
+    const inputsFormEle = document.querySelector(`#inputs-form`)
+    const outputsFormEle = document.querySelector(`#outputs-form`)
+
+    async function run() {
+        await main()
+
+        if(UPDATEDATA.findItem(MAC, "inputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "inputs")
+            console.log(storageData);            
+            assignInputs(storageData.data)
+        }else{
+            const ret = await getInputs()       
+            assignInputs(ret)
+        }
+
+        if(UPDATEDATA.findItem(MAC, "outputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "outputs")
+            console.log(storageData);            
+            assignOutputs(storageData.data)
+        }else{
+            const ret = await geOutputs()       
+            assignOutputs(ret)
+        }
+
+        LOADING.hide()   
+    }
+
+    inputsFormEle.onsubmit = (e)=>{
+        e.preventDefault()
+        LOADING.display()
+        const items = [...inputsFormEle.children]
+        let data = []
+        for(const item of items){
+            const varEle = item.querySelector(`#var`)
+            const nameEle = item.querySelector(`#name`)
+            if(varEle&&nameEle)
+            {
+                data.push({
+                    var:varEle.value,
+                    name:nameEle.value
+                })
+            }
+            
+        }
+        UPDATEDATA.addItem(MAC, "inputs", data)
+        LOADING.hide()
+    }
+    outputsFormEle.onsubmit = (e)=>{
+        e.preventDefault()
+        LOADING.display()
+        const items = [...outputsFormEle.children]
+        let data = []
+        for(const item of items){            
+            const varEle = item.querySelector(`#var`)
+            const nameEle = item.querySelector(`#name`)
+            const defaultEle = item.querySelector(`#default`)
+            if(varEle&&nameEle&&defaultEle){
+                data.push({
+                    var:varEle.value,
+                    name:nameEle.value,
+                    default:defaultEle.value
+                })
+            }
+        }
+        UPDATEDATA.addItem(MAC, "outputs", data)
+        LOADING.hide()
+    }
+    
+    function assignInputs(data){
+        inputsFormEle.innerHTML = ``
+        if(!Array.isArray(data)){ return }
+        for (let i = 0; i < data.length; i++) {
+            const variable = data[i].var;
+            const name = data[i].name;
+            const itemEle = document.createElement("div")
+            itemEle.className = `form-group-h border-basic group-h-wrap`
+
+            const varInput = document.createElement("input")
+            varInput.type = "text"
+            varInput.id = "var"
+            varInput.placeholder = "ชื่อตัวแปร"
+            varInput.value = variable
+            const varLabel = document.createElement("label")
+            varLabel.textContent = `ชื่อตัวแปร`
+            const varGroupEle = document.createElement("div")
+            varGroupEle.className = `form-group-h`
+            varGroupEle.appendChild(varLabel)
+            varGroupEle.appendChild(varInput)
+
+            const nameInput = document.createElement("input")
+            nameInput.type = "text"
+            nameInput.id = "name"
+            nameInput.placeholder = "ป้ายชื่อ"
+            nameInput.value = name == "" ? variable : name
+            const nameLabel = document.createElement("label")
+            nameLabel.textContent = `ป้ายชื่อ`
+            const nameGroupEle = document.createElement("div")
+            nameGroupEle.className = `form-group-h`
+            nameGroupEle.appendChild(nameLabel)
+            nameGroupEle.appendChild(nameInput)
+
+            itemEle.appendChild(varGroupEle)
+            itemEle.appendChild(nameGroupEle)
+
+            inputsFormEle.appendChild(itemEle)
+        }
+        const submitBtn = document.createElement("button")
+        submitBtn.type = "submit"
+        submitBtn.className = `btn-primary`
+        submitBtn.style.maxWidth = "max-content"
+        submitBtn.textContent = "บันทีก"
+        inputsFormEle.appendChild(submitBtn)
+    }
+    function assignOutputs(data){ 
+        outputsFormEle.innerHTML = ``        
+        for (let i = 0; i < data.length; i++) {
+            const variable = data[i].var;
+            const name = data[i].name;
+            const defaultValue = data[i].default;
+            const itemEle = document.createElement("div")
+            itemEle.className = `form-group-h border-basic group-h-wrap`
+
+            const varInput = document.createElement("input")
+            varInput.type = "text"
+            varInput.id = "var"
+            varInput.placeholder = "ชื่อตัวแปร"
+            varInput.value = variable
+            const varLabel = document.createElement("label")
+            varLabel.textContent = `ชื่อตัวแปร`
+            const varGroupEle = document.createElement("div")
+            varGroupEle.className = `form-group-h`
+            varGroupEle.appendChild(varLabel)
+            varGroupEle.appendChild(varInput)
+
+            const nameInput = document.createElement("input")
+            nameInput.type = "text"
+            nameInput.id = "name"
+            nameInput.placeholder = "ป้ายชื่อ"
+            nameInput.value = name == "" ? variable : name
+            const nameLabel = document.createElement("label")
+            nameLabel.textContent = `ป้ายชื่อ`
+            const nameGroupEle = document.createElement("div")
+            nameGroupEle.className = `form-group-h`
+            nameGroupEle.appendChild(nameLabel)
+            nameGroupEle.appendChild(nameInput)
+
+            const defaultSelect = document.createElement("select")
+            defaultSelect.type = "text"
+            defaultSelect.id = "default"
+            defaultSelect.innerHTML = `<option value="on">ON</option>
+            <option value="off">OFF</option>`
+            const defaultLabel = document.createElement("label")
+            defaultLabel.textContent = `ค่าเริ่มต้น`
+            const defaultGroupEle = document.createElement("div")
+            defaultGroupEle.className = `form-group-h`
+            defaultGroupEle.appendChild(defaultLabel)
+            defaultGroupEle.appendChild(defaultSelect)            
+            defaultSelect.value = defaultValue
+
+            itemEle.appendChild(varGroupEle)
+            itemEle.appendChild(nameGroupEle)
+            itemEle.appendChild(defaultGroupEle)
+
+            outputsFormEle.appendChild(itemEle)
+        }
+        const submitBtn = document.createElement("button")
+        submitBtn.type = "submit"
+        submitBtn.className = `btn-primary`
+        submitBtn.style.maxWidth = "max-content"
+        submitBtn.textContent = "บันทีก"
+        outputsFormEle.appendChild(submitBtn)
+    }
+
+    run()    
+</script>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
+    <title>T-BOARD GEN3 (UI2026)</title>
+</head>
+<body>
+    <div class="container">
+        <div class="top">
+            <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
+            <div class="btn-group"></div>
+        </div>
+        <div class="middle">
+            <div class="m-left">
+                <div class="m-left-inner">
+                    <div class="m-left-menu">
+                    </div>
+                </div>
+            </div>
+            <div class="m-right">
+                <div class="m-right-inner">
+                    <!-- ----------------------------- -->
+                     <form>
+                        <div class="form-group-h">
+                            <label>การใช้งาน</label>
+                            <select name="mode" id="mode">
+                                <option value="no">ไม่ใช้</option>
+                                <option value="use">ใช้งาน</option>
+                                <option value="cloud">cloud (stand alone)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <div class="form-group-h">
+                                <label>เซิร์ฟเวอร์</label>
+                                <input type="text" id="server" name="server" placeholder="เซิร์ฟเวอร์">
+                            </div>
+                            <div class="form-group-h">
+                                <label>พอร์ต</label>
+                                <input type="number" id="port" name="port" min="1" placeholder="พอร์ต">
+                            </div>
+                            <div class="form-group-h">
+                                <label>Client ID</label>
+                                <input type="text" id="clientId" name="clientId" placeholder="Client ID">
+                            </div>
+                            <div class="form-group-h">
+                                <label>ยูสเซอร์เนม</label>
+                                <input type="text" id="username" name="username" placeholder="ยูสเซอร์เนม">
+                            </div>
+                            <div class="form-group-h">
+                                <label>รหัสผ่าน</label>
+                                <input type="password" id="password" name="password" placeholder="รหัสผ่าน">
+                            </div>
+                            <div class="form-group-h">
+                                <label>Prefix Topic</label>
+                                <input type="text" id="prefixTopic" name="prefixTopic" placeholder="Prefix Topic">
+                            </div>
+                            <div class="form-group-h">
+                                <button class="btn-primary" type="submit">บันทึก</button>
+                            </div>
+                        </div>
+                     </form>
+                    <!-- ----------------------------- -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="./js/common.js"></script>
+<script>
+    const formEle = document.querySelector(`form`)
+    const modeEle = document.querySelector(`#mode`)
+    const serverEle = document.querySelector(`#server`)
+    const portEle = document.querySelector(`#port`)
+    const clientIdEle = document.querySelector(`#clientId`)
+    const usernameEle = document.querySelector(`#username`)
+    const passwordEle = document.querySelector(`#password`)
+    const prefixTopicEle = document.querySelector(`#prefixTopic`)
+
+    modeEle.onchange = ()=>{
+        serverEle.disabled = modeEle.value != "use"
+        portEle.disabled = modeEle.value != "use"
+        clientIdEle.disabled = modeEle.value != "use"
+        usernameEle.disabled = modeEle.value != "use"
+        passwordEle.disabled = modeEle.value != "use"
+        prefixTopicEle.disabled = modeEle.value != "use"
+    }
+
+    formEle.onsubmit = (e)=>{
+        e.preventDefault()
+        LOADING.display()
+        const mqtt_mode = modeEle.value
+        const mqtt_server = serverEle.value
+        const mqtt_port = isNaN( parseInt(portEle.value) ) ? 1883 : parseInt(portEle.value)
+        const mqtt_client = clientIdEle.value
+        const mqtt_user = usernameEle.value
+        const mqtt_pass = passwordEle.value
+        const basetopic = prefixTopicEle.value
+        if(mqtt_mode=="use"){
+            if(mqtt_server == ""
+            ||mqtt_port == ""
+            ||mqtt_client == ""
+            ||basetopic == ""){
+                alert("กรอกข้อมูลไม่ถูกต้อง...")
+                LOADING.hide()
+                return
+            }
+        }
+        const data = { mqtt_mode,
+            mqtt_server,
+            mqtt_port,
+            mqtt_client,
+            mqtt_user,
+            mqtt_pass,
+            basetopic }
+        UPDATEDATA.addItem(MAC, "mqtt", data)
+        LOADING.hide()
+    }
+
+    async function run() {
+        await main()
+        if(UPDATEDATA.findItem(MAC, "mqtt")){
+            const storageData = UPDATEDATA.findItem(MAC, "mqtt")
+            console.log(storageData);            
+            assignConfigs(storageData.data)
+        }else{
+            const retMqtt = await getMqttCfg()       
+            assignConfigs(retMqtt)
+        }
+    }
+    
+    function assignConfigs(data){
+        const { mqtt_mode,
+            mqtt_server,
+            mqtt_port,
+            mqtt_client,
+            mqtt_user,
+            mqtt_pass,
+            basetopic } = data || {}
+        modeEle.value = mqtt_mode
+        serverEle.value = mqtt_server
+        portEle.value = mqtt_port
+        clientIdEle.value = mqtt_client
+        usernameEle.value = mqtt_user
+        passwordEle.value = mqtt_pass
+        prefixTopicEle.value = basetopic
+        modeEle.dispatchEvent(new Event("change"))
+        LOADING.hide()   
+    }
+    run()    
+</script>
+</html>

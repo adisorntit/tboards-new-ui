@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
+    <title>T-BOARD GEN3 (UI2026)</title>
+</head>
+<body>
+    <div class="container">
+        <div class="top">
+            <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
+            <div class="btn-group"></div>
+        </div>
+        <div class="middle">
+            <div class="m-left">
+                <div class="m-left-inner">
+                    <div class="m-left-menu">
+                    </div>
+                </div>
+            </div>
+            <div class="m-right">
+                <div class="m-right-inner">
+                    <!-- ----------------------------- -->
+                     <div style="display: flex;flex-direction: column;gap: .3rem; padding: .2rem;">
+
+                         <div style="padding: .3rem;" class="border-basic">
+                            <h4>โซนเวลา</h4>
+                            <form id="timezone-form">
+                                <div class="form-group-h">
+                                    <input type="number" name="time-offset" id="time-offset" placeholder="เช่น +7" value="0">
+                                    <button class="btn-primary">บันทึก</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div style="padding: .3rem;" class="border-basic">
+                            <h4>อัพเดทรหัสผ่าน</h4>
+                            <form id="update-password-form">
+                                <div class="form-group-h">
+                                    <input type="password" name="password" id="password" placeholder="กรอกรหัสผ่านใหม่">
+                                    <button class="btn-primary">บันทึก</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div style="padding: .3rem;" class="border-basic">
+                            <h4>ดาวน์โหลด การตั้งค่า</h4>
+                            <button class="btn-primary" id="settingsDownloadBtn">ดาวน์โหลด ⬇</button>
+                        </div>
+                        
+                        <div style="padding: .3rem;" class="border-basic">
+                            <h4>นำเข้า การตั้งค่า</h4>
+                            <form id="import-settings-form">
+                                <div class="form-group-h">
+                                    <input type="file" name="file-settings" id="file-settings" placeholder="เลือกไฟล์ settings.json">
+                                    <button class="btn-primary">อัพโหลด</button>
+                                </div>
+                            </form>
+                         </div>
+
+                         <div style="padding: .3rem;" class="border-basic">
+                            <h4>เฟิร์มแวร์</h4>
+                            <div id="firmwares-details"></div>
+                         </div>
+
+                         <div style="padding: .3rem;" class="border-basic">
+                            <h4>อัพเกรดเฟิร์มแวร์ออนไลน์</h4>
+                            <div id="firmwares-list" style="display: flex; flex-direction: column; gap: .3rem;"></div>
+                         </div>
+
+                         <div style="padding: .3rem;" class="border-basic">
+                            <h4>อัพเกรดเฟิร์มแวร์แบบอัพโหลด</h4>
+                            <form id="upload-firmware-form">
+                                <div class="form-group-h">
+                                    <label>firmware.bin</label>
+                                    <input type="file" name="file-firmware" id="file-firmware" placeholder="เลือกไฟล์ settings.json">
+                                </div>
+                                <div class="form-group-h">
+                                    <label>littlefs.bin</label>
+                                    <input type="file" name="file-littlefs" id="file-littlefs" placeholder="เลือกไฟล์ settings.json">
+                                </div>
+                                <div class="form-group-h">
+                                    <button class="btn-primary">อัพโหลด</button>
+                                </div>
+                            </form>
+                         </div>
+
+                         <div style="padding: .3rem;" class="border-basic">
+                             <button id="rebootBtn" class="btn-yellow">รีบู๊ต 🔃</button>
+                            <button id="resetBtn" class="btn-red">รีเซ็ต 🔄</button>
+                         </div>
+
+                     </div>
+                    <!-- ----------------------------- -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="./js/common.js"></script>
+<script>
+    const timezoneFormEle = document.querySelector(`#timezone-form`)
+    const timeOffsetEle = document.querySelector(`#time-offset`)
+    const importSettingsFormEle = document.querySelector(`#import-settings-form`)
+    const passwordEle = document.querySelector(`#password`)
+    const settingsDownloadBtnEle = document.querySelector(`#settingsDownloadBtn`)
+    const updatePasswordFormEle = document.querySelector(`#update-password-form`)
+    const fileSettingsEle = document.querySelector(`#file-settings`)
+    const firmwaresDetailsEle = document.querySelector(`#firmwares-details`)
+    const firmwaresListEle = document.querySelector(`#firmwares-list`)
+    const uploadFirmwareFormEle = document.querySelector(`#upload-firmware-form`)
+    const fileFirmwareEle = document.querySelector(`#file-firmware`)
+    const fileLittlefsEle = document.querySelector(`#file-littlefs`)
+    const rebootBtnEle = document.querySelector(`#rebootBtn`)
+    const resetBtnEle = document.querySelector(`#resetBtn`)
+
+    if(reboot&&typeof reboot=="function"){
+        rebootBtnEle.onclick = ()=>{
+            reboot()
+            setTimeout(()=>{
+                window.location.reload()
+            },5000)
+        }
+    }
+
+    resetBtnEle.onclick = async ()=>{
+        let c = confirm("ยืนยันการรีเซ็ตอุปกรณ์...")
+        if(!c){ return }
+        LOADING.display("อุปกรณ์กำลังคืนค่าเริ่มต้น...")
+        const ret = await postData("/reset")
+        if(res.status=="success"){
+            LOADING.display("คืนค่าเริ่มต้นเรียบร้อย...")
+            setTimeout(()=>{ reboot() },1000)
+            setTimeout(async()=>{ window.location.reload() },6000)
+        }else{
+            throw new Error("Error");
+        }
+    }
+    settingsDownloadBtnEle.onclick = exportSetting
+
+    async function run() {
+        await main() 
+        /*-------------------*/
+        const retTimeOffset = await getTimeOffset()
+        if(retTimeOffset){
+            console.log("retTimeOffset", retTimeOffset);            
+        }
+        const retFirmwareVersion = await getFirmwareVersion()
+        if(retFirmwareVersion){
+            firmwaresDetailsEle.innerHTML = retFirmwareVersion
+        }
+        // const retFirmwaresList = await getFirmwaresList()
+        // if(retFirmwaresList&&typeof retFirmwaresList == "object"&&retFirmwaresList.result){
+        //     firmwaresListEle.innerHTML = ``
+        //     if(Array.isArray(retFirmwaresList.result))
+        //     {
+        //         for (const item of retFirmwaresList.result) {
+        //             const itemEle = document.createElement("button")
+        //             itemEle.className = "btn-dark3"
+        //             itemEle.style.justifyContent = "start"
+        //             itemEle.innerHTML = `<span>(เวอร์ชั่น ${item.version})</span> <small>${item.note}</small>`
+        //             itemEle.dataset.urlfs = item.url.fs
+        //             itemEle.dataset.urlfw = item.url.fw
+        //             firmwaresListEle.appendChild(itemEle)
+        //         }
+        //     }            
+        // }
+        /*-------------------*/
+        LOADING.hide()       
+    }
+
+    async function exportSetting() {
+        LOADING.display()
+        let inputs = await getInputs()
+        let outputs = await geOutputs()
+        let actionbtn = await getActionbtn()
+        let ping = await getPing()
+        let modread = await getModbusRead()
+        let modread_templates = await getModbusReadTemplatesJson()
+        let modwrite = await getModbusWrite()
+        let contact = await getContact()
+        let scene = await getScene()
+        let dataslots = await getDataslots()
+        let timeoffset = await getTimeOffset()
+        let template_items = await getModbusReadTemplates()
+        const settings = { inputs, outputs, actionbtn, ping, modread, modread_templates, template_items, modwrite, contact, scene, timeoffset, dataslots }
+        let settingsText = JSON.stringify(settings)
+        const link = document.createElement("a");
+        const file = new Blob([settingsText], { type: 'application/json' });
+        link.href = URL.createObjectURL(file);
+        link.download = `settings.json`;
+        link.click();
+        LOADING.hide()
+        URL.revokeObjectURL(link.href);
+    }
+
+    run()
+</script>
+</html>
