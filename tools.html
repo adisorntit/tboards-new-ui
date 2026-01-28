@@ -54,7 +54,7 @@
                             <form id="import-settings-form">
                                 <div class="form-group-h">
                                     <input type="file" name="file-settings" id="file-settings" placeholder="เลือกไฟล์ settings.json">
-                                    <button class="btn-primary">อัพโหลด</button>
+                                    <button class="btn-primary" type="submit">อัพโหลด</button>
                                 </div>
                             </form>
                          </div>
@@ -74,11 +74,11 @@
                             <form id="upload-firmware-form">
                                 <div class="form-group-h">
                                     <label>firmware.bin</label>
-                                    <input type="file" name="file-firmware" id="file-firmware" placeholder="เลือกไฟล์ settings.json">
+                                    <input type="file" name="file-firmware" id="file-firmware" placeholder="เลือกไฟล์ settings.json" accept=".bin" required>
                                 </div>
                                 <div class="form-group-h">
                                     <label>littlefs.bin</label>
-                                    <input type="file" name="file-littlefs" id="file-littlefs" placeholder="เลือกไฟล์ settings.json">
+                                    <input type="file" name="file-littlefs" id="file-littlefs" placeholder="เลือกไฟล์ settings.json" accept=".bin" required>
                                 </div>
                                 <div class="form-group-h">
                                     <button class="btn-primary">อัพโหลด</button>
@@ -138,36 +138,62 @@
         }
     }
     settingsDownloadBtnEle.onclick = exportSetting
+    importSettingsFormEle.onsubmit = importSettings
+    timezoneFormEle.onsubmit = updateTimeoffset
+    updatePasswordFormEle.onsubmit = updateAdminpassword
+    uploadFirmwareFormEle.onsubmit = man_upgrade
 
     async function run() {
         await main() 
         /*-------------------*/
         const retTimeOffset = await getTimeOffset()
         if(retTimeOffset){
-            console.log("retTimeOffset", retTimeOffset);            
+            timeOffsetEle.value = retTimeOffset.timeoffset
         }
         const retFirmwareVersion = await getFirmwareVersion()
         if(retFirmwareVersion){
             firmwaresDetailsEle.innerHTML = retFirmwareVersion
         }
-        // const retFirmwaresList = await getFirmwaresList()
-        // if(retFirmwaresList&&typeof retFirmwaresList == "object"&&retFirmwaresList.result){
-        //     firmwaresListEle.innerHTML = ``
-        //     if(Array.isArray(retFirmwaresList.result))
-        //     {
-        //         for (const item of retFirmwaresList.result) {
-        //             const itemEle = document.createElement("button")
-        //             itemEle.className = "btn-dark3"
-        //             itemEle.style.justifyContent = "start"
-        //             itemEle.innerHTML = `<span>(เวอร์ชั่น ${item.version})</span> <small>${item.note}</small>`
-        //             itemEle.dataset.urlfs = item.url.fs
-        //             itemEle.dataset.urlfw = item.url.fw
-        //             firmwaresListEle.appendChild(itemEle)
-        //         }
-        //     }            
-        // }
+        const retFirmwaresList = await getFirmwaresList()
+        if(retFirmwaresList&&typeof retFirmwaresList == "object"&&retFirmwaresList.result){
+            firmwaresListEle.innerHTML = ``
+            if(Array.isArray(retFirmwaresList.result))
+            {
+                for (const item of retFirmwaresList.result) {
+                    const itemEle = document.createElement("button")
+                    itemEle.className = "btn-dark3"
+                    itemEle.style.justifyContent = "start"
+                    itemEle.innerHTML = `<span>(เวอร์ชั่น ${item.version})</span> <small>${item.note}</small>`
+                    itemEle.dataset.urlfs = item.url.fs
+                    itemEle.dataset.urlfw = item.url.fw
+                    firmwaresListEle.appendChild(itemEle)
+
+                    itemEle.onclick = onlineUpgrade
+                }
+            }            
+        }
         /*-------------------*/
         LOADING.hide()       
+    }
+
+    async function updateTimeoffset(e) {
+        e.preventDefault()
+        LOADING.display()
+        let timeoffset_value = isNaN(parseFloat(timeOffsetEle.value))?0:parseFloat(timeOffsetEle.value)
+        let data = { timeoffset: timeoffset_value }
+        UPDATEDATA.addItem(MAC, "timeoffset", data)
+        LOADING.hide()
+    }
+    async function updateAdminpassword(e) {
+        e.preventDefault()
+        let c = confirm("ยืนยันการอัพเดทรหัสผ่าน...")
+        if(!c){ return }
+        LOADING.display()
+        let node = e.currentTarget
+        let password = passwordEle.value
+        let data = { auth: btoa(`admin:${password}`) }
+        UPDATEDATA.addItem(MAC, "auth", data)
+        LOADING.hide()
     }
 
     async function exportSetting() {
@@ -193,6 +219,176 @@
         link.click();
         LOADING.hide()
         URL.revokeObjectURL(link.href);
+    }
+
+    async function importSettings(e) {
+        e.preventDefault()
+        const form = e.currentTarget
+        const fileSettings = form.querySelector(`#file-settings`)
+        if(fileSettings&&fileSettings.files&&fileSettings.files.length==1){
+            const file = fileSettings.files[0]
+            const str = await readStringFromFile(file)
+            const json = stringIsJsonFormat(str)
+            if(json){
+                LOADING.display(`กำลังนำเข้าข้อมูลการตั้งค่า...`)
+                const keys = Object.keys(json)
+                let all = 0
+                let c = 0
+                for (const key of keys) {
+                    const readItem = json[key]
+                    if(key=="template_items")
+                    {
+                        for (let tp_idx = 0; tp_idx < readItem.length; tp_idx++) {
+                            const tpItem = readItem[tp_idx];
+                            all+=1
+                            let jsonBody = {
+                                item_id:tpItem["item_id"],
+                                data:tpItem
+                            }
+                            const ret = await postData("/modbus/templates/download","application/json",jsonBody)
+                            if(ret&&ret.status&&ret.status=="success"){ c++ }
+                        }
+                    }else{
+                        let _path = get_post_path(key)
+                        if(_path!="")
+                        {
+                            all+=1
+                            const ret = await postData(_path,"application/json",readItem)
+                            if(ret&&ret.status&&ret.status=="success"){ c++ }
+                        }
+                    }
+                    
+                    LOADING.display(`นำเข้า ${all} สำเร็จ ${c} ... ต้องรีบู๊ตอุปกรณ์`)
+                }
+
+
+                setTimeout(()=>{ reboot() }, 2000)
+                setTimeout(()=>{
+                    window.location.reload()
+                }, 6000)
+                
+            }else{
+                LOADING.display(`ข้อมูลการตั้งค่าผิดพลาด...`)
+            }
+        }
+        
+    }
+
+
+    function get_post_path(content){
+        let path = ""
+        switch (content) {
+            case "inputs":
+                path = "/inputs"
+                break;
+            case "outputs":
+                path = "/outputs"
+                break;
+            case "actionbtn":
+                path = "/actionbtn"
+                break;
+            case "ping":
+                path = "/ping"
+                break;
+            case "modread":
+                path = "/mod_read"
+                break;
+            case "modwrite":
+                path = "/mod_write"
+                break;
+            case "contact":
+                path = "/contact"
+                break;
+            case "scene":
+                path = "/scene"
+                break;
+            case "timeoffset":
+                path = "/timeoffset"
+                break;
+            case "dataslots":
+                path = "/dataslots"
+                break;
+            default:
+                break;
+        }
+        return path
+    }
+
+    async function man_upgrade(e) {
+        e.preventDefault()
+        let c = confirm(`ยืนยันการอัพเกรดเฟิร์มแวร์...`)
+        if(!c){return}
+        const fw = fileFirmwareEle.files[0];
+        const fs = fileLittlefsEle.files[0];
+        if(fw==undefined){ alert("ยังไม่ได้เลือกไฟล์ \"firmware.bin\""); return; }
+        if(fs==undefined){ alert("ยังไม่ได้เลือกไฟล์ \"littlefs.bin\""); return; }
+        if(fw.name!="firmware.bin"){ alert("ต้องเลือกไฟล์ให้ถูกต้อง \"firmware.bin\""); return; }
+        if(fs.name!="littlefs.bin"){ alert("ต้องเลือกไฟล์ให้ถูกต้อง \"littlefs.bin\""); return; }
+
+        LOADING.display("กำลังอัพเกรดเฟิร์มแวร์อุปกรณ์...")
+
+        setTimeout(async()=>{
+
+            try {
+                LOADING.display("กำลังอัพเกรด firmware.bin ...")
+            
+                let body = fw
+                let ret_fw = await fetch(HOST+"/upgrade_fw",{
+                    method:"POST",
+                    body
+                })
+            
+                if(!ret_fw.ok){ alert("อัพเกรด firmware.bin ผิดพลาด"); LOADING.hide();return; }
+                LOADING.display("กำลังอัพเกรด littlefs.bin ...")
+                body = document.getElementById('fs').files[0];
+                let ret_fs = await fetch(HOST+"/upgrade_fs",{
+                    method:"POST",
+                    body
+                })
+                if(!ret_fs.ok){ alert("อัพเกรด littlefs.bin ผิดพลาด"); LOADING.hide();return; }
+                LOADING.display("อัพเกรดเรียบร้อย...")
+                setTimeout(()=>{ reboot() },1500)
+                setTimeout(async()=>{ await window.location.reload() },6000)
+            } catch (error) {
+                alert(error.message)
+                LOADING.hide()
+            }
+
+        },1000)
+
+    }
+
+    async function onlineUpgrade(e) {
+        let node = e.currentTarget
+        let c = confirm(`ยืนยันการอัพเกรดเฟิร์มแวร์ เป็น => ${node.textContent}`)
+        if(!c){return}
+        LOADING.display("กำลังอัพเกรดเฟิร์มแวร์อุปกรณ์...")
+        urlfw = node.dataset.urlfw
+        urlfs = node.dataset.urlfs
+        let formJson = { urlfw,urlfs }
+        console.log(formJson);
+        
+        const ret = await postData("/upgrade","application/json",formJson)
+        if(ret&&ret.status&&ret.status=="success"){
+            LOADING.display("กำลังอัพเกรดเฟิร์มแวร์อุปกรณ์...")
+            let intervalCheckStatus = setInterval(async()=>{
+                const res = await getUpgradeStatus()
+                if(res&&typeof res == "object"&&Object.keys(res).includes("upgrading")){
+                    if(res.upgrading===false)
+                    {
+                        clearInterval(intervalCheckStatus)
+                        LOADING.display("อัพเกรดเรียบร้อย...")
+                        setTimeout(async()=>{ window.location.reload() },6000)
+                    }
+                }
+            },3000)
+        }else{
+            if(ret&&ret.message)
+            {
+                alert(ret.message)
+            }
+            window.location.reload()
+        }
     }
 
     run()

@@ -21,7 +21,21 @@
             </div>
             <div class="m-right">
                 <div class="m-right-inner">
-                    
+                    <!-- ----------------------------- -->
+                     <div style="padding: .5rem; display: flex; flex-direction: column; gap: .3rem;">
+                         <div id="modbus-tabs">
+                            <item id="tab-read">
+                                <span>การอ่าน</span>
+                            </item>
+                            <item id="tab-write">
+                                <span>การเขียน</span>
+                            </item>
+                         </div>
+                         <div id="ctrl-group">
+                         </div>
+                         <div id="modbus-list"></div>
+                     </div>
+                    <!-- ----------------------------- -->
                 </div>
             </div>
         </div>
@@ -29,8 +43,226 @@
 </body>
 <script src="./js/common.js"></script>
 <script>
+    const tabRead = document.querySelector(`#tab-read`)
+    const tabWrite = document.querySelector(`#tab-write`)
+    const modbusList = document.querySelector(`#modbus-list`)
+    const ctrlGroup = document.querySelector(`#ctrl-group`)
+
+    tabRead.onclick = changeTab
+    tabWrite.onclick = changeTab
+
+    async function changeTab(e)
+    {
+        LOADING.display()
+        const el = e.currentTarget
+        const elID = el.id
+        modbusList.dataset.cate = elID
+        modbusList.innerHTML = ``
+        ctrlGroup.dataset.cate = elID
+        ctrlGroup.innerHTML = ``
+        tabRead.classList.remove("active")
+        tabWrite.classList.remove("active")
+        switch (elID) {
+            case "tab-read":
+                tabRead.classList.add("active")
+                await assignModbusReadList()
+                break;
+            case "tab-write":
+                tabWrite.classList.add("active")
+                await assignModbusWriteList()
+                break;
+            default:
+                LOADING.hide()
+                break;
+        }
+    }
+
+    let TEMPLATES_FOR_MOD_READ = []
+    async function assignModbusReadList() {
+        modbusList.innerHTML = ``
+        ctrlGroup.innerHTML = ``
+        const modReadData = await getModbusRead()
+        const templatesData = await getModbusReadTemplates()
+        TEMPLATES_FOR_MOD_READ = templatesData
+        console.log("modReadData", modReadData);
+        console.log("templatesData", templatesData);
+
+        /**********/ 
+        const uploadTemplateForm = document.createElement("form")
+        uploadTemplateForm.id = "uploadTemplateForm"
+        uploadTemplateForm.onsubmit = (e)=>{
+            e.preventDefault()
+        }
+        const labelEle = document.createElement("label")
+        labelEle.textContent = `อัพโหลดไฟล์เทมเพลต`
+        const templateFileEle = document.createElement("input")
+        templateFileEle.type = "file"
+        templateFileEle.accept = ".json"
+        templateFileEle.required = true
+        const templateFileGroupEle = document.createElement("div")
+        templateFileGroupEle.className = "form-group-h"
+        templateFileGroupEle.appendChild(labelEle)
+        templateFileGroupEle.appendChild(templateFileEle)
+
+        const templateFileSubmitBtn = document.createElement("button")
+        templateFileSubmitBtn.className = `btn-primary`
+        templateFileSubmitBtn.textContent = `อัพโหลดไฟล์`
+        templateFileSubmitBtn.type = "submit"
+
+        const templateFileCreatorLinkBtn = document.createElement("button")
+        templateFileCreatorLinkBtn.className = `btn-yellow`
+        templateFileCreatorLinkBtn.textContent = `สร้างไฟล์เทมเพลตด้วยตัวเอง`
+        templateFileCreatorLinkBtn.type = "button"
+        templateFileCreatorLinkBtn.onclick = ()=>{
+            window.open("https://itcctvpro.com/tboards/3/modbus/templatemaker/","_blank")
+        }
+        templateFileGroupEle.appendChild(templateFileSubmitBtn)
+
+        uploadTemplateForm.appendChild(templateFileGroupEle)
+        uploadTemplateForm.appendChild(templateFileCreatorLinkBtn)
+
+         ctrlGroup.appendChild(uploadTemplateForm)
+
+        const addItemBtn = document.createElement("button")
+        addItemBtn.className = `btn-primary`
+        addItemBtn.textContent = `เพิ่มใหม่การอ่าน`
+        addItemBtn.onclick = add_new_read_item
+
+         ctrlGroup.appendChild(addItemBtn)
+        /**********/ 
+
+
+        
+        LOADING.hide()
+    }
+    async function assignModbusWriteList() {
+        modbusList.innerHTML = ``
+        ctrlGroup.innerHTML = ``
+        LOADING.hide()
+    }
+    /***
+     * 
+     */
+
+    function add_new_read_item(id)
+    {
+        const templates = TEMPLATES_FOR_MOD_READ
+        let new_id = new Date().getTime()
+        new_id = Math.floor(new_id/1000)
+        id = typeof id == "object"?new_id:id
+        id = typeof id == "number"?id:new_id
+        const itemsAll = [...modbusList.children]
+        if(itemsAll.filter(x=>x.dataset.item_id === String(id)).length > 0){ return }
+        const itemEle = document.createElement("div")
+        itemEle.className = "form-group-v border-basic"
+        itemEle.dataset.item_id = id
+
+        const buttonsGroup = document.createElement("div")
+        buttonsGroup.className = "form-group-h form-group-wrap"
+        const deleteBtn = document.createElement("button")
+        deleteBtn.type = "button"
+        deleteBtn.className = "btn-red"
+        deleteBtn.textContent = "ลบ"
+        deleteBtn.onclick = ()=>{
+            itemEle.remove()
+        }
+        const itemIdLabel = document.createElement("label")
+        itemIdLabel.textContent = `item_id : ${id}`
+        buttonsGroup.appendChild(deleteBtn)
+        buttonsGroup.appendChild(itemIdLabel)
+
+        const varNameGroup = document.createElement("div")
+        varNameGroup.className = "form-group-h form-group-wrap"
+        const varLabel = document.createElement("label")
+        varLabel.textContent = "ชื่อตัวแปร"
+        const varInput = document.createElement("input")
+        varInput.type = "text"
+        varInput.maxLength = 20
+        varInput.required = true
+        varInput.placeholder = varLabel.textContent
+        const nameLabel = document.createElement("label")
+        nameLabel.textContent = "ป้ายชื่อ"
+        const nameInput = document.createElement("input")
+        nameInput.type = "text"
+        nameInput.maxLength = 30
+        nameInput.required = true
+        nameInput.placeholder = nameLabel.textContent
+        varNameGroup.appendChild(varLabel)
+        varNameGroup.appendChild(varInput)
+        varNameGroup.appendChild(nameLabel)
+        varNameGroup.appendChild(nameInput)
+
+        const slaveGroup = document.createElement("div")
+        slaveGroup.className = "form-group-h form-group-wrap"
+        const slaveLabel = document.createElement("label")
+        slaveLabel.textContent = "สเลฟไอดี"
+        const slaveInput = document.createElement("input")
+        slaveInput.type = "number"
+        slaveInput.min = 1
+        slaveInput.max = 256
+        slaveInput.value = 1
+        slaveInput.required = true
+        slaveInput.placeholder = slaveLabel.textContent
+        slaveGroup.appendChild(slaveLabel)
+        slaveGroup.appendChild(slaveInput)
+
+        const intervalGroup = document.createElement("div")
+        intervalGroup.className = "form-group-h form-group-wrap"
+        const itvLabel = document.createElement("label")
+        itvLabel.textContent = "อ่านทุกๆ"
+        const itvUnitLabel = document.createElement("label")
+        itvUnitLabel.textContent = "วินาที"
+        const itvInput = document.createElement("input")
+        itvInput.type = "number"
+        itvInput.min = 1
+        itvInput.max = 3600
+        itvInput.value = 5
+        itvInput.required = true
+        itvInput.placeholder = itvLabel.textContent
+        intervalGroup.appendChild(itvLabel)
+        intervalGroup.appendChild(itvInput)
+        intervalGroup.appendChild(itvUnitLabel)
+        
+        const templateSelectGroup = document.createElement("div")
+        templateSelectGroup.className = "form-group-h form-group-wrap"
+        const templateSelectLabel = document.createElement("label")
+        templateSelectLabel.textContent = "เลือกเทมเพลต"
+        const templateSelectDetails = document.createElement("small")
+        const templateSelect = document.createElement("select")
+        templateSelect.id = "templateSelect"
+        templateSelect.required = true
+        templateSelectGroup.appendChild(templateSelectLabel)
+        templateSelectGroup.appendChild(templateSelect)
+        templateSelectGroup.appendChild(templateSelectDetails)
+
+        if(templates && typeof templates == "object" && Array.isArray(templates))
+        {
+            for (const template of templates) {
+                const option = document.createElement("option")
+                option.value = template.item_id
+                option.textContent = template.name
+                option.dataset.details = template.details
+                templateSelect.appendChild(option)
+            }
+        }
+        templateSelect.onchange = ()=>{
+            const optionSelected = templateSelect.options[templateSelect.options.selectedIndex]
+            templateSelectDetails.innerHTML = optionSelected.dataset.details
+        }
+
+        itemEle.appendChild(buttonsGroup)
+        itemEle.appendChild(varNameGroup)
+        itemEle.appendChild(slaveGroup)
+        itemEle.appendChild(intervalGroup)
+        itemEle.appendChild(templateSelectGroup)
+
+        templateSelect.dispatchEvent( new Event("change") )
+
+        modbusList.appendChild(itemEle)
+    }
     async function run() {
-        await main()        
+        await main()
+        tabRead.dispatchEvent( new Event("click") )
     }
     run()    
 </script>

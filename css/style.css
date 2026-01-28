@@ -90,6 +90,7 @@ button{
     justify-content: center;
     align-items: center;
     gap: .2rem;
+    min-width: max-content;
 }
 button:hover{
     opacity: .7;
@@ -145,41 +146,101 @@ form{
     flex-direction: column;
     gap: .5rem;
     padding: .5rem;
+    justify-content: start;
+    align-items: start;
 }
-form .form-group-v{
+.form-group-v{
     display: flex;
     flex-direction: column;
     justify-content: start;
     gap: .5rem;
     padding: .3rem;
 }
-form .form-group-h{
+.form-group-h{
     display: flex;
     justify-content: start;
     align-items: center;
     gap: .5rem;
     padding: .3rem;
 }
-
-form input[type="number"]{
-    padding: .3rem;
-    border: none;
-}
-
-form input[type="text"]
-,form input[type="password"]
-,form input[type="file"]
-,form select{
+form>.form-group-h, form>.form-group-v, .form-group-v>.form-group-h, .form-group-v>.form-group-v{
     width: 100%;
+}
+
+.form-group-h>.form-group-h, .form-group-h>.form-group-v{
+    flex-grow: 1;
+}
+.form-group-wrap{
+    flex-wrap: wrap;
+}
+
+input[type="number"]{
     padding: .3rem;
     border: none;
 }
-form input[type="file"]{
+
+input[type="text"]
+,input[type="password"]
+,input[type="file"]
+,select{
+    width: auto;
+    min-width: 15rem;
+    padding: .3rem;
+    border: none;
+}
+input[type="file"]{
     background-color: var(--theme-light);
     color: var(--theme-dark);
     padding: .1rem;
 }
 
-form label{
+label{
     min-width: max-content;
+}
+
+
+/***************/
+
+#modbus-tabs
+{
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+#modbus-tabs>item
+{
+    display: block;
+    padding: .2rem;
+    background-color: var(--theme-light);
+    color: var(--theme-dark-v2);
+    transition: .3s;
+    cursor: pointer;
+}
+#modbus-tabs>item:hover
+{
+    opacity: .7;
+}
+#modbus-tabs>item.active
+{
+    background-color: var(--theme-primary);
+    color: var(--theme-dark);
+}
+#modbus-list
+{
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+#ctrl-group
+{
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    background-color: var(--theme-dark-v3);
+    color: var(--theme-light);
+    padding: .3rem;
+    justify-content: start;
+    align-items: start;
 }

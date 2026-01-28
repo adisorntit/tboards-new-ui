@@ -75,6 +75,10 @@ async function getMaxItems() {
     const ret = await getData(`/get_maxItems`)
     return ret?ret:null
 }
+async function getUpgradeStatus() {
+    const ret = await getData(`/upgradeStatus`)
+    return ret?ret:null
+}
 async function getModbusReadTemplates() {
     let templates = []
     try {
@@ -138,6 +142,30 @@ async function reboot() {
     LOADING.display("อุปกรณ์กำลังรีบู๊ต...")
     const ret = await getData(`/reboot`)
     console.log(ret)    
+}
+function stringIsJsonFormat(str)
+{
+    try {
+        return JSON.parse(str)
+    } catch (error) {
+        return false
+    }
+}
+async function readStringFromFile(file) {
+    return await new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onload = function () {
+            const readtext = reader.result;
+            resolve(readtext)
+        };
+    
+        reader.onerror = function () {
+            console.error('Error reading the file');
+            reject("");
+        };
+    
+        reader.readAsText(file, 'utf-8');
+    })
 }
 /****************/
 const menu_list = [
@@ -304,7 +332,7 @@ class LOADING{
     }
 }
 window.MAC = ""
-window.HOST = "http://192.168.56.4" // for test
+window.HOST = "http://192.168.56.82" // for test
 window.AUTH = btoa(`admin:admin`) // for test
 async function main() {
     LOADING.display()
