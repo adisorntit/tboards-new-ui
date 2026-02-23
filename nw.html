@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -25,38 +26,12 @@
                      <form>
                         <div class="form-group-h border-basic">
                             <div class="form-group-h">
-                                <label>โหมด</label>
-                                <select name="mode" id="mode">
-                                    <option value="ap">AP (แอคเซสพ้อยท์)</option>
-                                    <option value="wifi">WiFi Station (ไวฟายสเตชั่น)</option>
-                                    <option value="eth">Ethernet (อีเทอร์เน็ต)</option>
-                                </select>
-                            </div>
-                            <div class="form-group-v">
-                                <span id="mac-address"></span>
-                            </div>
-                            <div class="form-group-h">
-                                <label>ออฟไลน์</label>
+                                <label>โหมดการออฟไลน์</label>
                                 <input type="checkbox" id="offline" name="offline">
                             </div>
                         </div>
-                        <div class="form-group-v border-basic">
-                            <div class="form-group-h">
-                                <button id="wifiScanBtn" class="btn-secondary" type="button">แสกน WiFi</button>
-                            </div>
-                            <div id="wifi-list">
-
-                            </div>
-                            <div class="form-group-h">
-                                <label>SSID</label>
-                                <input type="text" id="ssid" name="ssid" placeholder="SSID">
-                            </div>
-                            <div class="form-group-h">
-                                <label>Password</label>
-                                <input type="password" id="password" name="password" placeholder="รหัสผ่าน">
-                            </div>
-                        </div>
-                        <div class="form-group-v border-basic">
+                        <div class="form-group-v border-basic" id="eth-setting">
+                            <h3>ตั้งค่าเน็ต LAN</h3>
                             <div class="form-group-h">
                                 <label>DHCP</label>
                                 <input type="checkbox" id="dhcp" name="dhcp">
@@ -75,8 +50,104 @@
                                 <input type="text" id="gateway" name="gateway" placeholder="เกตเวย์ไอพี">
                             </div>
                         </div>
+                        <div class="form-group-v border-basic" id="wifi-setting">
+                            <h3>ตั้งค่าเน็ต WiFi</h3>
+                            <div class="form-group-h">
+                                <label>ไม่ใช้งาน WiFi</label>
+                                <input type="checkbox" name="wifi_off" id="wifi_off">
+                            </div>
+                            <div class="form-group-h">
+                                <button id="scan_wifi" class="bg-secondary" type="button">แสกน WiFi</button>
+                            </div>
+                            <div id="wifi_list">
+                            </div>
+                            <div class="form-group-h">
+                                <label>SSID</label>
+                                <input type="text" id="ssid" name="ssid" placeholder="SSID">
+                            </div>
+                            <div class="form-group-h">
+                                <label>Password</label>
+                                <input type="password" id="password" name="password" placeholder="รหัสผ่าน">
+                            </div>
+                            <div class="form-group-h">
+                                <label>DHCP</label>
+                                <input type="checkbox" id="dhcp" name="dhcp">
+                                <span id="dhcp-ip"></span>
+                            </div>
+                            <div class="form-group-h">
+                                <label>ไอพี</label>
+                                <input type="text" id="ip" name="ip" placeholder="ไอพี">
+                            </div>
+                            <div class="form-group-h">
+                                <label>ซัพเน็ตมาสก์</label>
+                                <input type="text" id="subnet" name="subnet" placeholder="ซัพเน็ตมาสก์">
+                            </div>
+                            <div class="form-group-h">
+                                <label>เกตเวย์ไอพี</label>
+                                <input type="text" id="gateway" name="gateway" placeholder="เกตเวย์ไอพี">
+                            </div>
+                            <div class="form-group-h">
+                                <label>TX Power</label>
+                                <select name="txPower" id="txPower">
+                                    <option value="19.5">19.5dBm</option>
+                                    <option value="19">19dBm</option>
+                                    <option value="18.5">18.5dBm</option>
+                                    <option value="17">17dBm</option>
+                                    <option value="15">15dBm</option>
+                                    <option value="13">13dBm</option>
+                                    <option value="11">11dBm</option>
+                                    <option value="8.5">8.5dBm</option>
+                                    <option value="7">7dBm</option>
+                                    <option value="5">5dBm</option>
+                                    <option value="2">2dBm</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group-v border-basic" id="sim-setting">
+                            <h3>ตั้งค่า SIM</h3>
+                            <div class="form-group-h">
+                                <label>การใช้งาน</label>
+                                <select name="sim_mode" id="sim_mode">
+                                    <option value="no">ไม่ใช้</option>
+                                    <option value="tel">โทร</option>
+                                    <!-- <option value="tel_net">โทรและอินเตอร์เน็ต</option> -->
+                                </select>
+                            </div>
+                            <div class="form-group-h">
+                                <label>ผู้ให้บริการ</label>
+                                <select name="provider" id="provider">
+                                    <option value="ais">AIS</option>
+                                    <option value="true">TRUE</option>
+                                    <option value="dtac">DTAC</option>
+                                    <option value="other">อื่น ๆ</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic" id="local-info">
+                            <h3>ข้อมูลการเชื่อมต่อ Local Network</h3>
+                            <div class="form-group-h">
+                                <p>Interface: <span id="interface"></span></p>
+                            </div>
+                            <div class="form-group-h">
+                                <p>IP Address: <span id="ip_address"></span></p>
+                            </div>
+                            <div class="form-group-h">
+                                <p>Mac Address: <span id="mac_address"></span></p>
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic" id="sim-info">
+                            <h3>ข้อมูลการเชื่อมต่อ SIM</h3>
+                            <div class="form-group-h">
+                                <p>IP Address: <span id="ip_address"></span></p>
+                            </div>
+                            <div class="form-group-h">
+                                <p>IMEI: <span id="imei"></span></p>
+                            </div>
+                        </div>
+                        
                         <div class="form-group-h">
-                            <button class="btn-primary" type="submit">บันทึก</button>
+                            <button class="bg-primary" type="submit">บันทึก</button>
                         </div>
                      </form>
                     <!-- ----------------------------- -->
@@ -89,128 +160,207 @@
 <script>
     
     const formEle = document.querySelector(`form`)
-    const modeEle = document.querySelector(`#mode`)
-    const offlineEle = document.querySelector(`#offline`)
-    const wifiScanBtnEle = document.querySelector(`#wifiScanBtn`)
-    const ssidEle = document.querySelector(`#ssid`)
-    const passwordEle = document.querySelector(`#password`)
-    const dhcpEle = document.querySelector(`#dhcp`)
-    const ipEle = document.querySelector(`#ip`)
-    const subnetEle = document.querySelector(`#subnet`)
-    const gatewayEle = document.querySelector(`#gateway`)
-    const macAddressEle = document.querySelector(`#mac-address`)
-    const dhcpIpEle = document.querySelector(`#dhcp-ip`)
-    const wifiListEle = document.querySelector(`#wifi-list`)
-    
-    wifiScanBtnEle.onclick = wifiScanClick
-    modeEle.onchange = ()=>{
-        wifiListEle.innerHTML = ""
-        ssidEle.value = ""
-        passwordEle.value = ""
-        ipEle.value = ""
-        subnetEle.value = ""
-        gatewayEle.value = ""
-        dhcpEle.checked = true
-        
-        
-        offlineEle.disabled = ["ap"].includes(modeEle.value)
-        offlineEle.checked = ["ap"].includes(modeEle.value)
-        wifiScanBtnEle.disabled = ["ap","eth"].includes(modeEle.value)
-        ssidEle.disabled = ["ap","eth"].includes(modeEle.value)
-        passwordEle.disabled = ["ap","eth"].includes(modeEle.value)
-        ipEle.disabled = ["ap"].includes(modeEle.value)
-        subnetEle.disabled = ["ap"].includes(modeEle.value)
-        gatewayEle.disabled = ["ap"].includes(modeEle.value)
-        dhcpEle.disabled = ["ap"].includes(modeEle.value)
+    const offline_ele = document.querySelector(`#offline`)
+    const eth_dhcp_ele = document.querySelector(`#eth-setting #dhcp`)
+    const eth_ip_ele = document.querySelector(`#eth-setting #ip`)
+    const eth_subnet_ele = document.querySelector(`#eth-setting #subnet`)
+    const eth_gateway_ele = document.querySelector(`#eth-setting #gateway`)
 
-        dhcpEle.dispatchEvent(new Event("change"))
-    }
+    const wifi_scan_btn = document.querySelector(`#wifi-setting #scan_wifi`)
+    const wifi_list_ele = document.querySelector(`#wifi-setting #wifi_list`)
+    const wifi_off_ele = document.querySelector(`#wifi-setting #wifi_off`)
+    const wifi_ssid_ele = document.querySelector(`#wifi-setting #ssid`)
+    const wifi_password_ele = document.querySelector(`#wifi-setting #password`)
+    const wifi_dhcp_ele = document.querySelector(`#wifi-setting #dhcp`)
+    const wifi_ip_ele = document.querySelector(`#wifi-setting #ip`)
+    const wifi_subnet_ele = document.querySelector(`#wifi-setting #subnet`)
+    const wifi_gateway_ele = document.querySelector(`#wifi-setting #gateway`)
+    const wifi_txPower_ele = document.querySelector(`#wifi-setting #txPower`)
+    
+    const sim_sim_mode_ele = document.querySelector(`#sim-setting #sim_mode`)
+    const sim_provider_ele = document.querySelector(`#sim-setting #provider`)
+    
+    const local_interface_ele = document.querySelector(`#local-info #interface`)
+    const local_ip_address_ele = document.querySelector(`#local-info #ip_address`)
+    const local_mac_address_ele = document.querySelector(`#local-info #mac_address`)
+    
+    const sim_ip_address_ele = document.querySelector(`#sim-info #ip_address`)
+    const sim_imei_ele = document.querySelector(`#sim-info #imei`)
+
+    let USESIM = false
+
     async function run() { 
-        await main()
+        if(!await main()){ return }
+
+        wifi_scan_btn.onclick = wifiScanClick
+
+        eth_dhcp_ele.onchange = ()=>{
+            eth_ip_ele.value = eth_dhcp_ele.checked?"":eth_ip_ele.dataset.value
+            eth_subnet_ele.value = eth_dhcp_ele.checked?"":eth_subnet_ele.dataset.value
+            eth_gateway_ele.value = eth_dhcp_ele.checked?"":eth_gateway_ele.dataset.value
+            eth_ip_ele.disabled = eth_dhcp_ele.checked
+            eth_subnet_ele.disabled = eth_dhcp_ele.checked
+            eth_gateway_ele.disabled = eth_dhcp_ele.checked
+        }
+
+        wifi_dhcp_ele.onchange = ()=>{
+            wifi_ip_ele.value = wifi_dhcp_ele.checked ? "" : wifi_ip_ele.dataset.value
+            wifi_subnet_ele.value = wifi_dhcp_ele.checked ? "" : wifi_subnet_ele.dataset.value
+            wifi_gateway_ele.value = wifi_dhcp_ele.checked ? "" : wifi_gateway_ele.dataset.value
+            wifi_ip_ele.disabled = wifi_dhcp_ele.checked
+            wifi_subnet_ele.disabled = wifi_dhcp_ele.checked
+            wifi_gateway_ele.disabled = wifi_dhcp_ele.checked
+        }
+
+        wifi_off_ele.onchange = ()=>{
+            wifi_ssid_ele.disabled = wifi_off_ele.checked
+            wifi_password_ele.disabled = wifi_off_ele.checked
+            wifi_ssid_ele.value = wifi_off_ele.checked ? "" : wifi_ssid_ele.dataset.value
+            wifi_password_ele.value = wifi_off_ele.checked ? "" : wifi_password_ele.dataset.value
+        }
+
+        sim_sim_mode_ele.onchange = ()=>{
+            const telAndNetMode = sim_sim_mode_ele.value=="tel_net"
+            offline_ele.disabled = telAndNetMode
+            if(telAndNetMode)
+            {
+                offline_ele.checked = false
+            }
+        }
+
+        
+        formEle.onsubmit = async(e)=>{
+            e.preventDefault()
+            const json = {
+                "config": {
+                    "offline": offline_ele.checked,
+                    "wifi": {
+                        "ssid": wifi_ssid_ele.value,
+                        "password": wifi_password_ele.value,
+                        "ip": wifi_dhcp_ele.checked ? "" : wifi_ip_ele.value,
+                        "subnet": wifi_dhcp_ele.checked ? "" : wifi_subnet_ele.value,
+                        "gateway": wifi_dhcp_ele.checked ? "" : wifi_gateway_ele.value,
+                        "txpower": parseFloat(wifi_txPower_ele.value)
+                    },
+                    "eth": {
+                        "ip": eth_dhcp_ele.checked ? "" : eth_ip_ele.value,
+                        "subnet": eth_dhcp_ele.checked ? "" : eth_subnet_ele.value,
+                        "gateway": eth_dhcp_ele.checked ? "" : eth_gateway_ele.value
+                    },
+                    "sim": {
+                        "enable" : USESIM,
+                        "mode": sim_sim_mode_ele.value,
+                        "provider": sim_provider_ele.value
+                    }
+                }
+            }
+
+            UPDATEDATA.addItem(MAC, "network", json)
+            // Object.assign(data, json)
+            console.log(json);
+            
+            LOADING.hide()
+        }
+
+        wifi_list_ele.style.cssText = `display:flex; flex-direction: column; gap:.2rem;`        
+
         if(UPDATEDATA.findItem(MAC, "network")){
             const storageData = UPDATEDATA.findItem(MAC, "network")
             console.log(storageData);            
             assignConfigs(storageData.data)
         }else{
-            const retNw = await getNw()
-            if(retNw){
-                const { mode, offline, wificonnection, ipconfig, ipaddress, mac } = retNw || {}
-                const data = {
-                    "nw_mode": mode,
-                    "ssid": "",
-                    "password": "",
-                    "dhcp": true,
-                    "ip": "",
-                    "subnet": "",
-                    "gateway": "",
-                    "offline": offline
-                }
-                macAddressEle.textContent = `[${mac}]`
-                if(ipconfig){
-                    const { dhcp, ip, subnet, gateway } = ipconfig || {}
-                    Object.assign(data,{ dhcp, ip, subnet, gateway })
-                    dhcpIpEle.textContent = dhcp?ipaddress:""
-                }
-                if(wificonnection)
-                {
-                    const { ssid, password } = wificonnection || {}
-                    Object.assign(data,{ ssid, password })
-                }
-                assignConfigs(data)
-            }   
+            const data = await getNw()
+            assignConfigs(data)            
         }
-        
 
-        wifiListEle.style.cssText = `display:flex; flex-direction: column; gap:.2rem;`        
-    }
-
-    dhcpEle.onchange = ()=>{
-        ipEle.value = ""
-        subnetEle.value = ""
-        gatewayEle.value = ""
-        ipEle.disabled = dhcpEle.checked
-        subnetEle.disabled = dhcpEle.checked
-        gatewayEle.disabled = dhcpEle.checked
-        dhcpIpEle.style.display = dhcpEle.checked?"inline":"none"
     }
 
     function assignConfigs(data)
     {
-        const { nw_mode, ssid, password, dhcp, ip, subnet, gateway, offline} = data || {}
-        modeEle.value = nw_mode
-        modeEle.dispatchEvent( new Event("change") )
-        offlineEle.checked = offline
-        dhcpEle.checked = dhcp        
-        ipEle.value = ip
-        subnetEle.value = subnet
-        gatewayEle.value = gateway
-        ssidEle.value = ssid
-        passwordEle.value = password
-
-        LOADING.hide()
-    }
-
-    formEle.onsubmit = (e)=>{
-        e.preventDefault()
-        LOADING.display()
-        const nw_mode = modeEle.value
-        const ssid = ssidEle.value
-        const password = passwordEle.value
-        const dhcp = dhcpEle.checked
-        const offline = offlineEle.checked
-        const ip = ipEle.value
-        const subnet = subnetEle.value
-        const gateway = gatewayEle.value
-        let data = {
-            nw_mode,ssid,password,dhcp,ip,subnet,gateway,offline
+        if(data&&typeof data == "object")
+        {
+            const { config, info } = data || {}
+            console.log(data);
+            
+            if(config&&typeof config=="object")
+            {
+                const { offline, eth, wifi, sim } = config || {}
+                if(offline)
+                {
+                    offline_ele.checked = offline
+                }
+                if(eth&&typeof eth=="object")
+                {
+                    const { ip, subnet, gateway } = eth || {}
+                    eth_dhcp_ele.checked = ip == ""
+                    eth_ip_ele.value = ip
+                    eth_subnet_ele.value = subnet
+                    eth_gateway_ele.value = gateway
+                    eth_ip_ele.dataset.value = ip
+                    eth_subnet_ele.dataset.value = subnet
+                    eth_gateway_ele.dataset.value = gateway
+                    eth_dhcp_ele.dispatchEvent(new Event("change"))
+                }
+                if(wifi&&typeof wifi=="object")
+                {
+                    const { ip, subnet, gateway, ssid, password, txpower } = wifi || {}
+                    wifi_off_ele.checked = ssid==""
+                    wifi_ssid_ele.value = ssid
+                    wifi_password_ele.value = password
+                    wifi_ssid_ele.dataset.value = ssid
+                    wifi_password_ele.dataset.value = password
+                    wifi_dhcp_ele.checked = ip==""
+                    wifi_ip_ele.value = ip
+                    wifi_subnet_ele.value = subnet
+                    wifi_gateway_ele.value = gateway
+                    wifi_ip_ele.dataset.value = ip
+                    wifi_subnet_ele.dataset.value = subnet
+                    wifi_gateway_ele.dataset.value = gateway
+                    wifi_off_ele.dispatchEvent(new Event("change"))
+                    wifi_dhcp_ele.dispatchEvent(new Event("change"))
+                    if(txpower && typeof txpower == "number")
+                    {
+                        wifi_txPower_ele.value = txpower
+                    }
+                }
+                if(sim&&typeof sim=="object")
+                {                 
+                    const { enable, mode, provider } = sim || {}
+                    USESIM = enable
+                    sim_sim_mode_ele.disabled = !enable
+                    sim_provider_ele.disabled = !enable
+                    sim_sim_mode_ele.value = mode==""?"no":mode
+                    sim_provider_ele.value = provider==""?"other":provider
+                }
+            }
+            if(info&&typeof info=="object")
+            {
+                const { local, sim } = info || {}
+                if(local&&typeof local=="object"){
+                    const { ipaddress, mac } = local || {}
+                    local_interface_ele.innerHTML = local.interface?local.interface:""
+                    local_ip_address_ele.innerHTML = ipaddress?ipaddress:""
+                    local_mac_address_ele.innerHTML = mac?mac:""
+                }
+                if(sim&&typeof sim=="object"){
+                    const { ipaddress, imei } = sim || {}
+                    sim_ip_address_ele.innerHTML = ipaddress?ipaddress:""
+                    sim_imei_ele.innerHTML = imei?imei:""
+                }
+            }
         }
-        UPDATEDATA.addItem(MAC, "network", data)
+
         LOADING.hide()
     }
+
 
     async function wifiScanClick(){
+        wifi_list_ele.innerHTML = ``
+        if(wifi_off_ele.checked){
+            alert("ปิดโหมด wifi อยู่")
+            return
+        }
         LOADING.display()
-        wifiListEle.innerHTML = ``
         const retScan = await wifiScan()
         if(retScan){
             retScan.map(x=>{
@@ -222,10 +372,10 @@
                 itemEle.dataset.auth = x.AUTH
                 itemEle.textContent = `${x.SSID} [rssi ${x.RSSI}] ${x.AUTH=="k"?"🔐":"🔓"}`
                 itemEle.onclick = ()=>{
-                    ssidEle.value = x.SSID
-                    passwordEle.value = ""
+                    wifi_ssid_ele.value = x.SSID
+                    wifi_password_ele.value = ""
                 }
-                wifiListEle.appendChild(itemEle)
+                wifi_list_ele.appendChild(itemEle)
             })
             LOADING.hide()
         }

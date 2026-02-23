@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -57,7 +58,7 @@
                                 <input type="text" id="prefixTopic" name="prefixTopic" placeholder="Prefix Topic">
                             </div>
                             <div class="form-group-h">
-                                <button class="btn-primary" type="submit">บันทึก</button>
+                                <button class="bg-primary" type="submit">บันทึก</button>
                             </div>
                         </div>
                      </form>
@@ -119,7 +120,7 @@
     }
 
     async function run() {
-        await main()
+        if(!await main()){ return }
         if(UPDATEDATA.findItem(MAC, "mqtt")){
             const storageData = UPDATEDATA.findItem(MAC, "mqtt")
             console.log(storageData);            

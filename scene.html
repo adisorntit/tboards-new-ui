@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -21,16 +22,999 @@
             </div>
             <div class="m-right">
                 <div class="m-right-inner">
+                    <!-- ----------------------- -->
+                    <div class="form-group-h">
+                        <button class="bg-primary" id="addNewSceneBtn">
+                            เพิ่มซีน
+                        </button>
+                        <button class="bg-blue" id="submitSceneBtn" form="scenesList" type="submit">
+                            บันทึก
+                        </button>
+                    </div>
                     
+                    <form id="scenesList"></form>
+                    <!-- ----------------------- -->
                 </div>
             </div>
         </div>
     </div>
 </body>
 <script src="./js/common.js"></script>
+<script src="./js/scenes.js"></script>
+<script src="./js/modWriteFn.js"></script>
 <script>
+    const addNewSceneBtn = document.querySelector(`#addNewSceneBtn`)
+    const submitSceneBtn = document.querySelector(`#submitSceneBtn`)
+    const formEle = document.querySelector(`#scenesList`)
+    formEle.onsubmit = async(e)=>{
+        e.preventDefault()
+        const itemsAll = [...formEle.children]
+        let scenes = []
+        for (const itemEle of itemsAll) {
+
+            const item_id = parseInt(itemEle.dataset.item_id)
+            const enabledEle = itemEle.querySelector(`#enabled`)
+            const nameEle = itemEle.querySelector(`#name`)
+            const timeFilterItemEle_s = Array.from(itemEle.querySelectorAll(`#timeFilterItem`))
+            const matchAllEle = itemEle.querySelector(`#matchAll`)
+            const matchDelayEle = itemEle.querySelector(`#matchDelay`)
+            const conditionsEle = itemEle.querySelector(`#conditions`)
+            const actionsEle = itemEle.querySelector(`#actions`)            
+            let daytime = []
+            let conditions = []
+            let actions = []
+
+            for (const ele of timeFilterItemEle_s) {
+                const timeStartEle = ele.querySelector(`#timeStart`)
+                const timeEndEle = ele.querySelector(`#timeEnd`)
+                const dayItemEle_s = Array.from(ele.querySelectorAll(`.dayItem`))
+                let days = [1,1,1,1,1,1,1]
+                if(dayItemEle_s.length===7)
+                {
+                    dayItemEle_s.map((x,xi)=>{
+                        days[xi] = x.checked?1:0
+                    })
+                }
+                daytime.push({
+                    time_begin:timeStartEle.value,
+                    time_end:timeEndEle.value,
+                    days
+                })
+            }
+            const conditionItems = [...conditionsEle.children]
+            const actionItems = [...actionsEle.children]
+            for (const ele of conditionItems) {
+                const cate = ele.querySelector(`#cate`).value
+
+                const operatorSelect = ele.querySelector(`#operatorSelect`)
+                const compareWithSelect = ele.querySelector(`#compareWithSelect`)
+                const compareStateSelect = ele.querySelector(`#compareStateSelect`)
+                const compareVariableSelect = ele.querySelector(`#compareVariableSelect`)
+                const compareValueInput = ele.querySelector(`#compareValueInput`)
+                switch (cate) {
+                    case 'afterboot':
+                        if(1){
+                            conditions.push({
+                                cate
+                            })
+                        }
+                        break;
+                    case 'input':
+                        if(1){
+                            const inputSelect = ele.querySelector(`#inputSelect`)
+                            conditions.push({
+                                cate,
+                                input: parseInt(inputSelect.value),
+                                compare: operatorSelect.value,
+                                compare_from: compareWithSelect.value,
+                                state: compareWithSelect.value=="custom"?compareStateSelect.value:compareVariableSelect.value
+                            })
+                        }
+                        break;
+                    case 'output':
+                        if(1){
+                            const outputSelect = ele.querySelector(`#outputSelect`)
+                            conditions.push({
+                                cate,
+                                output: parseInt(outputSelect.value),
+                                compare: operatorSelect.value,
+                                compare_from: compareWithSelect.value,
+                                state: compareWithSelect.value=="custom"?compareStateSelect.value:compareVariableSelect.value
+                            })
+                        }
+                        break;
+                    case 'modbus_read':
+                        if(1){
+                            const modReadSelect = ele.querySelector(`#modReadSelect`)
+                            const varSelect = ele.querySelector(`#varSelect`)
+                            const compareDiffInput = ele.querySelector(`#compareDiffInput`)     
+                            
+                            const modReadSelected = modReadSelect.options[modReadSelect.options.selectedIndex]
+                            const varSelected = varSelect.options[varSelect.options.selectedIndex]
+                            conditions.push({
+                                cate,
+                                item_id: parseInt(modReadSelected.value),
+                                template:{
+                                    tp_id: parseInt(modReadSelected.dataset.template),
+                                    var:varSelect.value
+                                },
+                                compare:operatorSelect.value,
+                                diff:compareDiffInput.disabled?0:parseFloat(compareDiffInput.value),
+                                compare_from:compareWithSelect.value,
+                                value:compareWithSelect.value=="custom"?varSelected.dataset.type=="replace"?compareStateSelect.value:parseFloat(compareValueInput.value):compareVariableSelect.value
+                            })
+                        }
+                        break;
+                    case 'ping':
+                        if(1){
+                            const pingSelect = ele.querySelector(`#pingSelect`)
+                            conditions.push({
+                                cate,
+                                item_id: parseInt(pingSelect.value),
+                                compare: "eq",
+                                result: parseInt(compareStateSelect.value)
+                            })
+                        }
+                        break;
+                    case 'time':
+                        if(1){
+                            const timeInput = ele.querySelector(`#timeInput`)
+                            const dayItems = Array.from( ele.querySelectorAll(`.dayItem`) )                            
+                            if(dayItems.length===7){
+                                let days = []
+                                dayItems.map(x=>{
+                                    days.push(x.checked?1:0)
+                                })
+                                conditions.push({
+                                    cate,
+                                    time: timeInput.value,
+                                    days
+                                })
+                            }
+                        }
+                        break;
+                    case 'actionbtn':
+                        if(1){
+                            const actionBtnSelect = ele.querySelector(`#actionBtnSelect`)
+                            conditions.push({
+                                cate,
+                                item_id: parseInt(actionBtnSelect.value)
+                            })
+                        }
+                        break;
+                }
+            }
+            /*****/
+            for (const ele of actionItems) {
+                const cate = ele.querySelector(`#cate`).value
+
+                const enabledCheck = ele.querySelector(`#enabled`)
+                const destinationSelect = ele.querySelector(`#destinationSelect`)
+                const valueFromSelect = ele.querySelector(`#valueFromSelect`)
+                const valueFromVariableSelect = ele.querySelector(`#valueFromVariableSelect`)
+                const valueStateSelect = ele.querySelector(`#valueStateSelect`)
+                const valueInput = ele.querySelector(`#valueInput`)
+                const delaysInput = ele.querySelector(`#delaysInput`)
+                const messageInput = ele.querySelector(`#messageInput`)
+
+                const enabled = enabledCheck.checked?1:0
+                const delay = isNaN(parseInt(delaysInput.value)) ? 0 : parseInt(delaysInput.value)
+                switch (cate) {
+                    case "output":
+                        if(1){
+                            const from = valueFromSelect.value
+                            const output = parseInt(destinationSelect.value)
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                output,
+                                from,
+                                state:from=="custom"?valueStateSelect.value:valueFromVariableSelect.value
+                            })
+                        }                        
+                        break;
+                    case "modbus_write":
+                        if(1){
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                            })
+                        }                        
+                        break;
+                    case "linemessaging":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            const msg = messageInput.value
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id,
+                                msg
+                            })
+                        }                        
+                        break;
+                    case "telegram":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            const msg = messageInput.value
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id,
+                                msg
+                            })
+                        }                        
+                        break;
+                    case "email":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            const msg = messageInput.value
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id,
+                                msg
+                            })
+                        }                        
+                        break;
+                    case "tel":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id
+                            })
+                        }                        
+                        break;
+                    case "actionbtn":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id
+                            })
+                        }                        
+                        break;
+                    case "tboard":
+                        if(1){
+                            const item_id = parseInt(destinationSelect.value)
+                            const output = parseInt(valueInput.value)
+                            const output_action = parseInt(valueStateSelect.value)
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                item_id,
+                                output,
+                                output_action
+                            })
+                        }                        
+                        break;
+                    case "tboard2":
+                        if(1){
+                            const protocal = destinationSelect.value
+
+                            const targetInput = ele.querySelector(`#targetInput`)
+                            const usernameInput = ele.querySelector(`#usernameInput`)
+                            const passwordInput = ele.querySelector(`#passwordInput`)
+                            const payloadInput = ele.querySelector(`#payloadInput`)
+                            const methodSelect = ele.querySelector(`#methodSelect`)
+
+                            const varItemsParent = ele.querySelector(`#varItems`)
+                            const varItems = [...varItemsParent.children]
+
+                            let content = {
+                                username:usernameInput.value,
+                                password:passwordInput.value
+                            }
+
+                            const payload = stringIsJsonFormat(payloadInput.value)
+                            if(protocal=="mqtt"){
+                                Object.assign(content, {
+                                    topic:targetInput.value,
+                                    payload: payload || null
+                                })
+                            }
+                            if(protocal=="http"){
+                                Object.assign(content, {
+                                    url:targetInput.value,
+                                    method: methodSelect.value
+                                })
+                                if(["post", "put"].includes(methodSelect.value)){
+                                    Object.assign(content, {
+                                        body: payload || null
+                                    })
+                                }
+                            }
+
+                            let replaces = []
+                            varItems.map(x=>{
+                                const name = x.dataset.name
+                                const variable = x.querySelector(`#valueFromVariableSelect`).value
+                                
+                                const addCalcBtn = x.querySelector(`#addCalcBtn`)
+                                const calcItemsParent = x.querySelector(`#calcItems`)
+                                
+                                let cal = []
+                                const calcItems = [...calcItemsParent.children]
+                                calcItems.map(y=>{
+                                    const calcOperatorSelect = y.querySelector(`#calcOperatorSelect`)
+                                    const calcOperandInput = y.querySelector(`#calcOperandInput`)
+                                    let operator = calcOperatorSelect.value.replace("f","").replace("r","")
+                                    let pos = calcOperatorSelect.value.replace("+","").replace("-","").replace("*","").replace("/","")
+                                    let operand = isNaN(parseFloat(calcOperandInput.value))?0:parseFloat(calcOperandInput.value)
+                                    cal.push({
+                                        operator,
+                                        pos,
+                                        operand
+                                    })
+                                })
+
+                                replaces.push({ name, variable, cal })
+                            })
+
+                            Object.assign(content, { replaces })
+
+                            actions.push({
+                                cate,
+                                enabled,
+                                delay,
+                                protocal,
+                                content
+                            })
+                        }                        
+                        break;
+                }
+            }
+
+            console.log("actions", actions);
+            
+            scenes.push({
+                item_id,
+                enabled:enabledEle.checked,
+                match_all:matchAllEle.checked,
+                match_delay:parseInt(matchDelayEle.value),
+                name:nameEle.value,
+                daytime,
+                when:conditions,
+                action:actions
+            })
+        } 
+
+        UPDATEDATA.addItem(MAC, "scenes", scenes)   
+        await loadData()     
+    }
+    addNewSceneBtn.onclick = addNewScene
+
+    const dayItems = ["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."]
+    function addNewScene(id){
+        let new_id = new Date().getTime()
+        new_id = Math.floor(new_id/1000)
+        id = typeof id == "object"?new_id:id
+        id = typeof id == "number"?id:new_id
+        const itemsAll = [...formEle.children]
+        if(itemsAll.length >= MAX_ITEMS["scene"]){ alert("จำนวนครบ "+ MAX_ITEMS["scene"] +" แล้ว"); return}
+        if(itemsAll.filter(x=>x.dataset.item_id === String(id)).length > 0){ return }
+        const itemEle = document.createElement("div")
+        itemEle.className = "form-group-v border-basic"
+        itemEle.dataset.item_id = id
+
+        const buttonsGroup = document.createElement("div")
+        buttonsGroup.className = "form-group-h form-group-wrap"
+        const deleteBtn = document.createElement("button")
+        deleteBtn.type = "button"
+        deleteBtn.className = "bg-red"
+        deleteBtn.textContent = "ลบ"
+        deleteBtn.onclick = ()=>{
+            itemEle.remove()
+        }
+        const itemIdLabel = document.createElement("label")
+        itemIdLabel.textContent = `item_id : ${id}`
+        buttonsGroup.appendChild(deleteBtn)
+        buttonsGroup.appendChild(itemIdLabel)
+
+        const enableLabel = document.createElement("label")
+        enableLabel.textContent = "เปิดใช้งาน"
+        const enableCheck = document.createElement("input")
+        enableCheck.type = "checkbox"
+        enableCheck.id = "enabled"
+        enableCheck.checked = true
+        enableCheck.placeholder = enableLabel.textContent
+
+        const nameGroup = document.createElement("div")
+        nameGroup.className = "form-group-h form-group-wrap"
+        const nameLabel = document.createElement("label")
+        nameLabel.textContent = "ชื่อ"
+        const nameInput = document.createElement("input")
+        nameInput.type = "text"
+        nameInput.id = "name"
+        nameInput.maxLength = 30
+        nameInput.required = true
+        nameInput.placeholder = nameLabel.textContent
+
+        const expandBtn = document.createElement("button")
+        expandBtn.type = "button"
+        // expandBtn.className = "bg-red"
+        expandBtn.textContent = "ขยาย"
+
+        nameGroup.appendChild(enableLabel)
+        nameGroup.appendChild(enableCheck)
+        nameGroup.appendChild(nameLabel)
+        nameGroup.appendChild(nameInput)
+        nameGroup.appendChild(expandBtn)
+
+        const detailsGroup = document.createElement("div")
+        detailsGroup.className = "form-group-v"
+        detailsGroup.style.display = "none"
+
+        expandBtn.onclick = ()=>{
+            const isHide = detailsGroup.style.display == "none"
+            if(isHide){
+                detailsGroup.style.display = "flex"
+                expandBtn.innerHTML = "ย่อ"
+            }else{
+                detailsGroup.style.display = "none"
+                expandBtn.innerHTML = "ขยาย"
+            }
+        }
+
+        const timeFilterGroup = document.createElement("div")
+        timeFilterGroup.id = "timeFilter"
+        timeFilterGroup.className = "form-group-v border-basic"
+        const addTimeFilterBtn = document.createElement("button")
+        addTimeFilterBtn.id = "addTimeFilterBtn"
+        addTimeFilterBtn.type = "button"
+        addTimeFilterBtn.className = "bg-primary"
+        addTimeFilterBtn.style.marginRight = "auto"
+        addTimeFilterBtn.textContent = "เพิ่มช่วงเวลา"
+        const timeFilterItemsGroup = document.createElement("div")
+        timeFilterItemsGroup.className = "form-group-v"
+        timeFilterGroup.appendChild(addTimeFilterBtn)
+        timeFilterGroup.appendChild(timeFilterItemsGroup)
+        addTimeFilterBtn.onclick = ()=>{
+            const timeFilterItemGroup = document.createElement("div")
+            timeFilterItemGroup.id = "timeFilterItem"
+            timeFilterItemGroup.className = "form-group-h"
+            const deleteItemBtn = document.createElement("button")
+            deleteItemBtn.type = "button"
+            deleteItemBtn.className = "bg-red"
+            deleteItemBtn.textContent = "ลบ"
+            deleteItemBtn.onclick = ()=>{
+                const childs = [...timeFilterItemsGroup.children]
+                if(childs.length<=1){ return }
+                timeFilterItemGroup.remove()
+            }
+
+            const timeStartGroup = document.createElement("div")
+            timeStartGroup.className = "form-group-h form-group-wrap"
+            const timeStartLabel = document.createElement("label")
+            timeStartLabel.textContent = "ช่วงเวลา"
+            const timeStartInput = document.createElement("input")
+            timeStartInput.type = "time"
+            timeStartInput.id = "timeStart"
+            timeStartInput.value = "00:00"
+            timeStartInput.required = true
+            timeStartInput.placeholder = timeStartLabel.textContent
+            const timeEndInput = document.createElement("input")
+            timeEndInput.type = "time"
+            timeEndInput.id = "timeEnd"
+            timeEndInput.value = "23:59"
+            timeEndInput.required = true
+            timeEndInput.placeholder = timeStartLabel.textContent
+            timeStartGroup.appendChild(timeStartLabel)
+            timeStartGroup.appendChild(timeStartInput)
+            timeStartGroup.appendChild(timeEndInput)
+            
+            const daysGroup = document.createElement("div")
+            daysGroup.className = "form-group-h form-group-wrap"
+            dayItems.map((x,xi)=>{
+                const dayLabel = document.createElement("label")
+                dayLabel.textContent = x
+                const dayCheck = document.createElement("input")
+                dayCheck.type = "checkbox"
+                dayCheck.id = `day-${xi}`
+                dayCheck.className = `dayItem`
+                dayCheck.checked = true
+                dayCheck.placeholder = dayLabel.textContent
+                const dayGroup = document.createElement("div")
+                dayGroup.className = "form-group-h form-group-wrap"
+                dayGroup.appendChild(dayLabel)
+                dayGroup.appendChild(dayCheck)
+                daysGroup.appendChild(dayGroup)
+            })
+            timeFilterItemGroup.appendChild(deleteItemBtn)
+            timeFilterItemGroup.appendChild(timeStartGroup)
+            timeFilterItemGroup.appendChild(daysGroup)
+
+            timeFilterItemsGroup.appendChild(timeFilterItemGroup)
+        }
+        addTimeFilterBtn.dispatchEvent( new Event("click") )
+
+        const matchAllLabel = document.createElement("label")
+        matchAllLabel.textContent = "เป็นจริงทุกเงื่อนไข"
+        const matchAllCheck = document.createElement("input")
+        matchAllCheck.type = "checkbox"
+        matchAllCheck.id = "matchAll"
+        matchAllCheck.checked = true
+        matchAllCheck.placeholder = matchAllLabel.textContent
+        const matchDelayLabel = document.createElement("label")
+        matchDelayLabel.textContent = "เว้นระยะเมื่อเงื่อนไขเป็นจริง(วินาที)"
+        const matchDelayInput = document.createElement("input")
+        matchDelayInput.type = "number"
+        matchDelayInput.id = "matchDelay"
+        matchDelayInput.value = 0
+        matchDelayInput.required = true
+        matchDelayInput.placeholder = matchDelayLabel.textContent
+        const matchGroup = document.createElement("div")
+        matchGroup.className = "form-group-h form-group-wrap"
+        matchGroup.appendChild(matchAllCheck)
+        matchGroup.appendChild(matchAllLabel)
+        matchGroup.appendChild(matchDelayLabel)
+        matchGroup.appendChild(matchDelayInput)
+
+        const conditionsTitleGroup = document.createElement("div")
+        conditionsTitleGroup.className = "form-group-h"
+        const conditionsTitle = document.createElement("h3")
+        conditionsTitle.textContent = "เงื่อนไข"
+        const addConditionBtn = document.createElement("button")
+        addConditionBtn.type = "button"
+        addConditionBtn.id = "addConditionBtn"
+        addConditionBtn.className = "bg-primary"
+        addConditionBtn.textContent = "เพิ่มเงื่อนไข"
+        conditionsTitleGroup.appendChild(conditionsTitle)
+        conditionsTitleGroup.appendChild(addConditionBtn)
+        const conditionsList = document.createElement("div")
+        conditionsList.id = 'conditions'
+        conditionsList.className = 'form-group-v border-basic'
+
+        const actionsTitleGroup = document.createElement("div")
+        actionsTitleGroup.className = "form-group-h"
+        const addActionBtn = document.createElement("button")
+        addActionBtn.type = "button"
+        addActionBtn.id = "addActionBtn"
+        addActionBtn.className = "bg-primary"
+        addActionBtn.textContent = "เพิ่มการกระทำ"
+        const actionsTitle = document.createElement("h3")
+        actionsTitle.textContent = "การกระทำ"
+        actionsTitleGroup.appendChild(actionsTitle)
+        actionsTitleGroup.appendChild(addActionBtn)
+        const actionsList = document.createElement("div")
+        actionsList.id = 'actions'
+        actionsList.className = 'form-group-v border-basic'
+
+        detailsGroup.appendChild(timeFilterGroup)
+        detailsGroup.appendChild(matchGroup)
+        detailsGroup.appendChild(conditionsTitleGroup)
+        detailsGroup.appendChild(conditionsList)
+        detailsGroup.appendChild(actionsTitleGroup)
+        detailsGroup.appendChild(actionsList)
+
+        itemEle.appendChild(buttonsGroup)
+        itemEle.appendChild(nameGroup)
+        itemEle.appendChild(detailsGroup)
+
+        addConditionBtn.onclick = async ()=>{
+            const max = 10
+            if([...conditionsList.children].length >= max){ alert(`เพิ่มเงื่อนไขได้ไม่เกิน ${max} รายการ`);return }
+            const cItem = makeCondition()
+            conditionsList.appendChild(cItem)
+        }
+
+        addActionBtn.onclick = async ()=>{
+            const max = 10
+            if([...actionsList.children].length >= max){ alert(`เพิ่มการกระทำได้ไม่เกิน ${max} รายการ`);return }
+            const aItem = makeAction()
+            actionsList.appendChild(aItem)
+        }
+
+        formEle.appendChild(itemEle)
+    }
+
+    async function loadData()
+    {
+        LOADING.display("กำลังโหลดข้อมูลซีน...")
+        formEle.innerHTML = ""
+        let scenes = []
+        if(UPDATEDATA.findItem(MAC, "scenes")){
+            const storageData = UPDATEDATA.findItem(MAC, "scenes")
+            scenes = storageData.data
+        }else{
+            scenes = await getScene()
+        }
+
+        //assign data
+        for (const sc of scenes) {
+            const { item_id, enabled, name, match_all, match_delay } = sc || {}
+            const { daytime, when, action } = sc || {}
+            console.log(sc);            
+            addNewScene(item_id)
+            const itemsAll = [...formEle.children]
+            if(itemsAll[itemsAll.length-1])
+            {
+                const itemEle = itemsAll[itemsAll.length-1]
+                itemEle.querySelector(`#enabled`).checked = enabled
+                itemEle.querySelector(`#name`).value = name
+                itemEle.querySelector(`#matchAll`).checked = match_all
+                itemEle.querySelector(`#matchDelay`).value = match_delay
+                const addTimeFilterBtn = itemEle.querySelector(`#addTimeFilterBtn`)
+                const conditionsEle = itemEle.querySelector(`#conditions`)
+                const addConditionBtn = itemEle.querySelector(`#addConditionBtn`)  
+                const actionsEle = itemEle.querySelector(`#actions`)  
+                const addActionBtn = itemEle.querySelector(`#addActionBtn`)  
+                let n=0
+                for (const d of daytime) {
+                    const { days, time_begin, time_end } = d || {}
+                    const timeFilterItemEle_s = Array.from(itemEle.querySelectorAll(`#timeFilterItem`))
+                    if(n>0)
+                    {
+                        addTimeFilterBtn.dispatchEvent( new Event("click") )
+                    }
+                    if(timeFilterItemEle_s[n])
+                    {
+                        const ele = timeFilterItemEle_s[n]
+                        ele.querySelector(`#timeStart`).value = time_begin
+                        ele.querySelector(`#timeEnd`).value = time_end
+                        const dayItemEle_s = Array.from(ele.querySelectorAll(`.dayItem`))
+                        dayItemEle_s.map((x,xi)=>{
+                            x.checked = days[xi]
+                        })
+                    }
+                    n++
+                }
+                
+                for (const w of when) {
+                    const { cate, input, compare, compare_from, state, 
+                        output, item_id, template, diff, value, 
+                        result, time, days } = w || {}
+
+                    addConditionBtn.dispatchEvent( new Event("click") )
+                    const cItems = [...conditionsEle.children]       
+                    if(cItems[cItems.length-1])
+                    {
+                        const ele = cItems[cItems.length-1]
+                        ele.querySelector("#cate").value = cate
+                        ele.querySelector("#cate").dispatchEvent( new Event("change") )
+
+                        const operatorSelect = ele.querySelector(`#operatorSelect`)
+                        const compareWithSelect = ele.querySelector(`#compareWithSelect`)
+                        const compareStateSelect = ele.querySelector(`#compareStateSelect`)
+                        const compareVariableSelect = ele.querySelector(`#compareVariableSelect`)
+                        const compareValueInput = ele.querySelector(`#compareValueInput`)
+
+                        switch (cate) {
+                            case "afterboot":
+                                if(1)
+                                {
+                                }
+                                break;
+                            case "input":
+                                if(1)
+                                {
+                                    const inputSelect = ele.querySelector(`#inputSelect`)
+                                    inputSelect.value = input
+                                    operatorSelect.value = compare
+                                    operatorSelect.dispatchEvent( new Event("change") )
+                                    compareWithSelect.value = compare_from
+                                    compareWithSelect.dispatchEvent( new Event("change") )
+                                    if(compare_from=="custom"){
+                                        compareStateSelect.value = state
+                                    }else{
+                                        compareVariableSelect.value = state
+                                    }
+                                }
+                                break;
+                            case "output":
+                                if(1)
+                                {
+                                    const outputSelect = ele.querySelector(`#outputSelect`)
+                                    outputSelect.value = output
+                                    operatorSelect.value = compare
+                                    operatorSelect.dispatchEvent( new Event("change") )
+                                    compareWithSelect.value = compare_from
+                                    compareWithSelect.dispatchEvent( new Event("change") )
+                                    if(compare_from=="custom"){
+                                        compareStateSelect.value = state
+                                    }else{
+                                        compareVariableSelect.value = state
+                                    }
+                                }
+                                break;
+                            case "modbus_read":
+                                if(1)
+                                {
+                                    const modReadSelect = ele.querySelector(`#modReadSelect`)
+                                    const varSelect = ele.querySelector(`#varSelect`)
+                                    const compareDiffInput = ele.querySelector(`#compareDiffInput`)
+                                    const _var = template["var"]
+                                    const tp_id = template["tp_id"]
+                                    modReadSelect.value = item_id
+                                    modReadSelect.dispatchEvent( new Event("change") )
+                                    varSelect.value = _var
+                                    varSelect.dispatchEvent( new Event("change") )
+                                    operatorSelect.value = compare
+                                    operatorSelect.dispatchEvent( new Event("change") )
+                                    if(!compareDiffInput.disabled){
+                                        compareDiffInput.value = diff
+                                    }
+                                    compareWithSelect.value = compare_from
+                                    compareWithSelect.dispatchEvent( new Event("change") )
+                                    const varSelected = varSelect.options[varSelect.options.selectedIndex]
+                                    if(compare_from=="custom"){
+                                        if(varSelected.dataset.type=="replace"){
+                                            compareStateSelect.value = value
+                                        }else{
+                                            compareValueInput.value = value
+                                        }
+                                    }else{
+                                        compareVariableSelect.value = value
+                                    }
+                                }
+                                break;
+                            case "ping":
+                                if(1)
+                                {
+                                    compareStateSelect.value = result
+                                }
+                                break;
+                            case "time":
+                                if(1)
+                                {
+                                    ele.querySelector(`#timeInput`).value = time
+                                    const dayItems = Array.from( ele.querySelectorAll(`.dayItem`) )
+                                    if(dayItems.length === days){
+                                        days.map((x,xi)=>{
+                                            dayItems.checked = x
+                                        })
+                                    }
+                                }
+                                break;
+                            case "actionbtn":
+                                if(1)
+                                {
+                                    ele.querySelector(`#actionBtnSelect`).value = item_id
+                                }
+                                break;
+                        }
+
+                    }
+                }
+
+                for (const a of action) {
+                    const { cate, enabled, delay, output, from, state, 
+                    item_id, msg, output_action, protocal, content } = a || {}
+
+                    addActionBtn.dispatchEvent( new Event("click") )
+                    const acItems = [...actionsEle.children]       
+                    if(acItems[acItems.length-1])
+                    {
+                        const ele = acItems[acItems.length-1]
+                        ele.querySelector("#cate").value = cate
+                        ele.querySelector("#cate").dispatchEvent( new Event("change") )
+
+                        const enabledCheck = ele.querySelector(`#enabled`)
+                        const delaysInput = ele.querySelector(`#delaysInput`)
+                        const destinationSelect = ele.querySelector(`#destinationSelect`)
+                        const valueFromSelect = ele.querySelector(`#valueFromSelect`)
+                        const valueFromVariableSelect = ele.querySelector(`#valueFromVariableSelect`)
+                        const valueStateSelect = ele.querySelector(`#valueStateSelect`)
+                        const valueInput = ele.querySelector(`#valueInput`)
+                        const messageInput = ele.querySelector(`#messageInput`)
+
+                        enabledCheck.checked = enabled
+                        delaysInput.value = delay
+                        switch (cate) {
+                            case "output":
+                                if(1)
+                                {
+                                    destinationSelect.value = output
+                                    valueFromSelect.value = from
+                                    valueFromSelect.dispatchEvent( new Event("change") )
+                                    if(from=="custom"){
+                                        valueStateSelect.value = state
+                                    }else{
+                                        valueFromVariableSelect.value = state
+                                    }
+                                }                                
+                                break;
+                            case "modbus_write":
+                                if(1)
+                                {}                                
+                                break;
+                            case "linemessaging":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                    messageInput.value = msg
+                                }                                
+                                break;
+                            case "telegram":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                    messageInput.value = msg
+                                }                                
+                                break;
+                            case "email":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                    messageInput.value = msg
+                                }                                
+                                break;
+                            case "tel":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                }                                
+                                break;
+                            case "actionbtn":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                }                                
+                                break;
+                            case "tboard":
+                                if(1)
+                                {
+                                    destinationSelect.value = item_id
+                                    valueInput.value = output
+                                    valueStateSelect.value = output_action
+                                }                                
+                                break;
+                            case "tboard2":
+                                if(1)
+                                {
+                                    destinationSelect.value = protocal
+                                    destinationSelect.dispatchEvent( new Event("change") )
+                                    const targetInput = ele.querySelector(`#targetInput`)
+                                    const usernameInput = ele.querySelector(`#usernameInput`)
+                                    const passwordInput = ele.querySelector(`#passwordInput`)
+                                    const payloadInput = ele.querySelector(`#payloadInput`)
+                                    const addVarBtn = ele.querySelector(`#addVarBtn`)
+
+                                    const { replaces } = content || {}                            
+                                    if(protocal=="mqtt"){
+                                        const { topic, username, password, payload } = content || {}
+                                        targetInput.value = topic
+                                        usernameInput.value = username
+                                        passwordInput.value = password
+                                        payloadInput.value = payload ? typeof payload == "object" ? JSON.stringify(payload) : "" : ""
+                                    }
+                                    if(protocal=="http"){
+                                        const methodSelect = ele.querySelector(`#methodSelect`)
+                                        const { url, username, password, body, method } = content || {}
+                                        targetInput.value = url
+                                        usernameInput.value = username
+                                        passwordInput.value = password
+                                        methodSelect.value = method
+                                        methodSelect.dispatchEvent( new Event("change") )
+                                        if(["post","put"].includes(method))
+                                        {
+                                            payloadInput.value = body ? typeof body == "object" ? JSON.stringify(body) : "" : ""
+                                        }
+                                    }
+                                    const varItemsParent = ele.querySelector(`#varItems`)
+
+                                    replaces.map(x=>{
+                                        const { cal, name, variable } = x || {}
+                                        addVarBtn.dispatchEvent( new Event("click") )
+                                        const varItems = [...varItemsParent.children]
+                                        if(varItems[varItems.length-1])
+                                        {
+                                            const varItem = varItems[varItems.length-1]
+                                            const variableEle = varItem.querySelector(`#valueFromVariableSelect`)
+                                            variableEle.value = variable
+                                            const addCalcBtn = varItem.querySelector(`#addCalcBtn`)
+                                            const calcItemsParent = varItem.querySelector(`#calcItems`)
+                                            cal.map(c=>{
+                                                const { operator, pos, operand } = c || {}
+                                                addCalcBtn.dispatchEvent( new Event("click") )
+                                                const calcItems = [...calcItemsParent.children]
+                                                if(calcItems[calcItems.length-1]){
+                                                    const calcItem = calcItems[calcItems.length-1]
+                                                    const calcOperatorSelect = calcItem.querySelector(`#calcOperatorSelect`)
+                                                    const calcOperandInput = calcItem.querySelector(`#calcOperandInput`)
+                                                    calcOperatorSelect.value = pos=="f"?`${pos}${operator}`:`${operator}${pos}`
+                                                    calcOperandInput.value = operand
+                                                }
+                                            })
+                                        }
+                                    })
+                                }                                
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
+        setTimeout(()=>{ LOADING.hide() }, 1000)
+    }
+
+    let MAX_ITEMS = null
+    let variables = []
+    let inputs = []
+    let outputs = []
+    let modWrites = []
+    let modReads = []
+    let modReadTemplates = []
+    let actionBtns = []
+    let pings = []
+    let contacts = null
     async function run() {
-        await main()        
+        if(!await main()){ return } 
+        MAX_ITEMS = await getMaxItems()
+
+        LOADING.display("กำลังโหลดข้อมูลอินพุต...")
+        if(UPDATEDATA.findItem(MAC, "inputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "inputs")
+            inputs = storageData.data
+        }else{
+            inputs = await getInputs()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลเอาท์พุต...")
+        if(UPDATEDATA.findItem(MAC, "outputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "outputs")
+            outputs = storageData.data
+        }else{
+            outputs = await getOutputs()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลการอ่านมอดบัส...")
+        if(UPDATEDATA.findItem(MAC, "modbusRead")){
+            const storageData = UPDATEDATA.findItem(MAC, "modbusRead")
+            modReads = storageData.data
+        }else{
+            modReads = await getModbusRead()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลการเขียนมอดบัส...")
+        if(UPDATEDATA.findItem(MAC, "modbusWrite")){
+            const storageData = UPDATEDATA.findItem(MAC, "modbusWrite")
+            modWrites = storageData.data
+        }else{
+            modWrites = await getModbusWrite()
+        }
+        modReadTemplates= await getModbusReadTemplates()
+
+        LOADING.display("กำลังโหลดข้อมูลปุ่มเสมือน...")
+        if(UPDATEDATA.findItem(MAC, "actionBtn")){
+            const storageData = UPDATEDATA.findItem(MAC, "actionBtn")
+            actionBtns = storageData.data
+        }else{
+            actionBtns = await getActionbtn()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลการ Ping...")
+        if(UPDATEDATA.findItem(MAC, "ping")){
+            const storageData = UPDATEDATA.findItem(MAC, "ping")
+            pings = storageData.data
+        }else{
+            pings = await getPing()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลการติดต่อ...")
+        if(UPDATEDATA.findItem(MAC, "contacts")){
+            const storageData = UPDATEDATA.findItem(MAC, "contacts")
+            contacts = storageData.data
+        }else{
+            contacts = await getContact()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลตัวแปรข้อมูล...")
+        variables = await getVariables2()
+
+        await loadData()      
     }
     run()    
 </script>

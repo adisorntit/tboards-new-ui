@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -21,17 +22,132 @@
             </div>
             <div class="m-right">
                 <div class="m-right-inner">
-                    
+                    <!-- ----------------------------- -->
+                     <div style="padding: .5rem; display: flex; flex-direction: column; gap: .3rem;">
+                         <div id="modbus-tabs">
+                            <item id="tab-actionBtn">
+                                <span>ปุ่มเสมือน</span>
+                            </item>
+                            <item id="tab-ping">
+                                <span>Ping</span>
+                            </item>
+                            <item id="tab-dataslots">
+                                <span>ช่องเก็บข้อมูล</span>
+                            </item>
+                            <item id="tab-contacts">
+                                <span>ช่องทางการแจ้งเตือน</span>
+                            </item>
+                            <item id="tab-extraCmd">
+                                <span>การรับคำสั่งพิเศษ</span>
+                            </item>
+                         </div>
+                         <div id="ctrl-group">
+                         </div>
+                         <div id="data-area"></div>
+                     </div>
+                    <!-- ----------------------------- -->
                 </div>
             </div>
         </div>
     </div>
 </body>
 <script src="./js/common.js"></script>
+<script src="./js/more.js"></script>
+<script src="./js/modWriteFn.js"></script>
 <script>
+    const tab_actionBtn = document.querySelector(`#tab-actionBtn`)
+    const tab_ping = document.querySelector(`#tab-ping`)
+    const tab_dataslots = document.querySelector(`#tab-dataslots`)
+    const tab_contacts = document.querySelector(`#tab-contacts`)
+    const tab_extraCmd = document.querySelector(`#tab-extraCmd`)
+    const dataArea = document.querySelector(`#data-area`)
+    const ctrlGroup = document.querySelector(`#ctrl-group`)
+
+    tab_actionBtn.onclick = changeTab
+    tab_ping.onclick = changeTab
+    tab_dataslots.onclick = changeTab
+    tab_contacts.onclick = changeTab
+    tab_extraCmd.onclick = changeTab
+
+    let MAX_ITEMS=null;
+
+    async function changeTab(e)
+    {
+        LOADING.display()
+        const el = e.currentTarget
+        const elID = el.id
+        dataArea.dataset.cate = elID
+        dataArea.innerHTML = ``
+        ctrlGroup.dataset.cate = elID
+        ctrlGroup.innerHTML = ``
+
+        tab_actionBtn.classList.remove("active")
+        tab_ping.classList.remove("active")
+        tab_dataslots.classList.remove("active")
+        tab_contacts.classList.remove("active")
+        tab_extraCmd.classList.remove("active")
+
+        window.localStorage.setItem(`moreTabs`, elID)
+        switch (elID) {
+            case "tab-actionBtn":
+                tab_actionBtn.classList.add("active")
+                await displayActionBtnList()
+                break;
+            case "tab-ping":
+                tab_ping.classList.add("active")
+                await displayPingList()
+                break;
+            case "tab-dataslots":
+                tab_dataslots.classList.add("active")
+                await displayDataslotsList()
+                break;
+            case "tab-contacts":
+                tab_contacts.classList.add("active")
+                await displayContactsList()
+                break;
+            case "tab-extraCmd":
+                tab_extraCmd.classList.add("active")
+                await displayExtraCmdList()
+                break;
+            default:
+                window.localStorage.setItem(`moreTabs`, "tab-actionBtn")
+                LOADING.hide()
+                break;
+        }
+    }
+    /**************************************************************/
+        
+
     async function run() {
-        await main()        
+        if(!await main()){ return } 
+        MAX_ITEMS = await getMaxItems()
+        if(!window.localStorage.getItem(`moreTabs`)){
+            tab_actionBtn.dispatchEvent( new Event("click") )
+        }else{
+            switch (window.localStorage.getItem(`moreTabs`)) {
+                case "tab-actionBtn":
+                    tab_actionBtn.dispatchEvent( new Event("click") )
+                    break;                    
+                case "tab-ping":
+                    tab_ping.dispatchEvent( new Event("click") )
+                    break;                    
+                case "tab-dataslots":
+                    tab_dataslots.dispatchEvent( new Event("click") )
+                    break;                    
+                case "tab-contacts":
+                    tab_contacts.dispatchEvent( new Event("click") )
+                    break;                    
+                case "tab-extraCmd":
+                    tab_extraCmd.dispatchEvent( new Event("click") )
+                    break;                    
+            
+                default:
+                    tab_actionBtn.dispatchEvent( new Event("click") )
+                    break;
+            }
+        }  
     }
     run()    
 </script>
+<script src="./js/more.js"></script>
 </html>

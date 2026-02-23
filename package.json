@@ -1,0 +1,33 @@
+{
+  "name": "tboards-app",
+  "version": "1.0.0",
+  "description": "TBoards Control Interface",
+  "author": "Thanapol IT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.itcctvpro.tboards",
+    "productName": "TBoards App",
+    "directories": {
+      "output": "dist_installer"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TBoards App"
+    }
+  },
+  "devDependencies": {
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1"
+  }
+}

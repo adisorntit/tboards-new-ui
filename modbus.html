@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -33,7 +34,7 @@
                          </div>
                          <div id="ctrl-group">
                          </div>
-                         <div id="modbus-list"></div>
+                         <form id="modbus-list"></form>
                      </div>
                     <!-- ----------------------------- -->
                 </div>
@@ -62,37 +63,35 @@
         ctrlGroup.innerHTML = ``
         tabRead.classList.remove("active")
         tabWrite.classList.remove("active")
+        window.localStorage.setItem(`modbusTabs`, elID)
         switch (elID) {
             case "tab-read":
                 tabRead.classList.add("active")
-                await assignModbusReadList()
+                await displayModbusReadList()
                 break;
             case "tab-write":
                 tabWrite.classList.add("active")
-                await assignModbusWriteList()
+                await displayModbusWriteList()
                 break;
             default:
+                window.localStorage.setItem(`modbusTabs`, "tab-read")
                 LOADING.hide()
                 break;
         }
     }
 
     let TEMPLATES_FOR_MOD_READ = []
-    async function assignModbusReadList() {
+    let MAX_ITEMS = null
+    let templateListOnlineBtn_gb = null
+    async function displayModbusReadList() {
         modbusList.innerHTML = ``
         ctrlGroup.innerHTML = ``
-        const modReadData = await getModbusRead()
-        const templatesData = await getModbusReadTemplates()
-        TEMPLATES_FOR_MOD_READ = templatesData
-        console.log("modReadData", modReadData);
-        console.log("templatesData", templatesData);
-
         /**********/ 
         const uploadTemplateForm = document.createElement("form")
         uploadTemplateForm.id = "uploadTemplateForm"
-        uploadTemplateForm.onsubmit = (e)=>{
-            e.preventDefault()
-        }
+        // uploadTemplateForm.onsubmit = (e)=>{
+        //     e.preventDefault()
+        // }
         const labelEle = document.createElement("label")
         labelEle.textContent = `อัพโหลดไฟล์เทมเพลต`
         const templateFileEle = document.createElement("input")
@@ -105,45 +104,387 @@
         templateFileGroupEle.appendChild(templateFileEle)
 
         const templateFileSubmitBtn = document.createElement("button")
-        templateFileSubmitBtn.className = `btn-primary`
+        templateFileSubmitBtn.className = `bg-primary`
         templateFileSubmitBtn.textContent = `อัพโหลดไฟล์`
-        templateFileSubmitBtn.type = "submit"
+        templateFileSubmitBtn.type = "button"
+        templateFileGroupEle.appendChild(templateFileSubmitBtn)
 
         const templateFileCreatorLinkBtn = document.createElement("button")
-        templateFileCreatorLinkBtn.className = `btn-yellow`
+        templateFileCreatorLinkBtn.className = `bg-yellow`
         templateFileCreatorLinkBtn.textContent = `สร้างไฟล์เทมเพลตด้วยตัวเอง`
         templateFileCreatorLinkBtn.type = "button"
         templateFileCreatorLinkBtn.onclick = ()=>{
             window.open("https://itcctvpro.com/tboards/3/modbus/templatemaker/","_blank")
         }
-        templateFileGroupEle.appendChild(templateFileSubmitBtn)
 
+        const templateListOnlineBtn = document.createElement("button")
+        templateListOnlineBtn.className = `bg-basic`
+        templateListOnlineBtn.textContent = `รายการเทมเพลตออนไลน์`
+        templateListOnlineBtn.type = "button"
+        templateListOnlineBtn.onclick = templateListOnlineModal
+        
+        const btnGroupEle = document.createElement("div")
+        btnGroupEle.className = "form-group-h"
+        btnGroupEle.appendChild(templateFileCreatorLinkBtn)
+        btnGroupEle.appendChild(templateListOnlineBtn)
+        templateListOnlineBtn_gb = templateListOnlineBtn
+        
         uploadTemplateForm.appendChild(templateFileGroupEle)
-        uploadTemplateForm.appendChild(templateFileCreatorLinkBtn)
+        uploadTemplateForm.appendChild(btnGroupEle)
+
+        templateFileSubmitBtn.onclick = uploadCustomTemplate
 
          ctrlGroup.appendChild(uploadTemplateForm)
 
         const addItemBtn = document.createElement("button")
-        addItemBtn.className = `btn-primary`
+        addItemBtn.className = `bg-primary`
         addItemBtn.textContent = `เพิ่มใหม่การอ่าน`
         addItemBtn.onclick = add_new_read_item
+        const submitItemBtn = document.createElement("button")
+        submitItemBtn.className = `bg-blue`
+        submitItemBtn.textContent = `บันทึกรายการ`
+        submitItemBtn.type = `submit`
+        submitItemBtn.setAttribute("form", "modbus-list")
 
-         ctrlGroup.appendChild(addItemBtn)
-        /**********/ 
+        const btnGroupBottomEle = document.createElement("div")
+        btnGroupBottomEle.className = "form-group-h"
+        btnGroupBottomEle.appendChild(addItemBtn)
+        btnGroupBottomEle.appendChild(submitItemBtn)
 
+         ctrlGroup.appendChild(btnGroupBottomEle)
+
+        modbusList.onsubmit = update_read_items
+        /**********/
+        const templatesData = await getModbusReadTemplates()
+        TEMPLATES_FOR_MOD_READ = templatesData
+
+        if(UPDATEDATA.findItem(MAC, "modbusRead")){
+            const storageData = UPDATEDATA.findItem(MAC, "modbusRead")
+            console.log("modRead storageData",storageData);
+            assignModbusReadList(storageData.data)
+        }else{
+            const modReadData = await getModbusRead()
+            console.log("modReadData", modReadData);  
+            assignModbusReadList(modReadData)      
+        }
+        /**********/
+        LOADING.hide()
+    }
+
+    async function templateListOnlineModal() {
+        LOADING.display()
+        let templateItems = await getModbusReadTemplates()
+        let readItems = await getModbusRead()
+        let templates_from_server = await fetch("https://itcctvpro.com/tboards/3/modbus/templates/").then(r=>r.json())
+        if(!templates_from_server){
+            LOADING.hide()
+            return
+        }
+        console.log(templates_from_server);
+        
+        const container = document.createElement("div")
+        const listEle = document.createElement("ul")
+        container.appendChild(listEle)
+        for (const tp of templates_from_server) {
+            const { details, item_id, name, version } = tp || {}
+            const var_ = tp.var || undefined
+
+            let tp_idx = templateItems.findIndex(x=>x.item_id == item_id)
+            let used = readItems.findIndex(x=>x.tp_id == item_id) >= 0 ? true : false
+
+            const itemEle = document.createElement("li")
+            itemEle.className = `border-basic`
+            const topEle = document.createElement("div")
+            topEle.className = `form-group-h`
+            const nameEle = document.createElement("span")
+            const installBtn = document.createElement("button")
+            installBtn.type = "button"
+            installBtn.className = "bg-secondary"
+            installBtn.textContent = "ติดตั้ง"
+            const updateBtn = document.createElement("button")
+            updateBtn.type = "button"
+            updateBtn.className = "bg-yellow"
+            const deleteBtn = document.createElement("button")
+            deleteBtn.type = "button"
+            deleteBtn.className = "bg-red"
+            deleteBtn.textContent = "ลบออก"
+            
+            const downloadBtn = document.createElement("button")
+            downloadBtn.type = "button"
+            downloadBtn.className = "bg-primary"
+            downloadBtn.textContent = "เก็บไฟล์"
+            topEle.appendChild(nameEle)
+            let usedText = ""
+            if(tp_idx>=0)
+            {
+                const _version = templateItems[tp_idx]["version"]
+                if(_version)
+                {                    
+                    usedText = "มีแล้ว V." + String(_version)
+                    if(used){
+                       usedText += " ใช้งานอยู่"
+                    }else{
+                        topEle.appendChild(deleteBtn)
+                        deleteBtn.onclick = template_remove_btn_click
+                    }
+                    if(_version != version){
+                        topEle.appendChild(updateBtn)
+                        updateBtn.textContent = "อัพเดท V." + String(version)
+                        updateBtn.onclick = template_update_btn_click
+                    }
+                }
+            }else{
+                topEle.appendChild(installBtn)
+                installBtn.onclick = template_download_btn_click
+            }
+            topEle.appendChild(downloadBtn)
+            downloadBtn.dataset.online = "true"
+            downloadBtn.onclick = template_save_btn_click
+
+            const infoEle = document.createElement("ul")
+            const versionEle = document.createElement("li")
+            const detailsEle = document.createElement("li")
+            // topEle.appendChild()
+
+            infoEle.appendChild(versionEle)
+            infoEle.appendChild(detailsEle)
+            
+            itemEle.appendChild(topEle)
+            itemEle.appendChild(infoEle)
+            nameEle.innerHTML = `<strong>ชื่อ: ${name}</strong>${usedText==``?``:` (${usedText})`}`
+            versionEle.innerHTML = `เวอร์ชั่น: ${version}`
+            detailsEle.innerHTML = `รายละเอียด: ${details}`
+            itemEle.dataset.item_id = item_id
+            itemEle.dataset.details = details
+            itemEle.dataset.name = name
+            itemEle.dataset.version = version
+            itemEle.dataset.variable = var_
+            listEle.appendChild(itemEle)
+        }
+
+        if(templateItems&&templateItems.length>0){ //for uploaded templates
+            for (const tp of templateItems) {
+                const { details, item_id, name, version } = tp || {}
+                const var_ = tp.var || undefined
+                if([...listEle.children].filter(x=>String(x.dataset.item_id)==String(item_id)).length == 0)
+                {
+                    let used = readItems.findIndex(x=>x.tp_id == item_id) >= 0 ? true : false
+                    const itemEle = document.createElement("li")
+                    itemEle.className = `border-basic`
+                    const topEle = document.createElement("div")
+                    topEle.className = `form-group-h`
+                    const nameEle = document.createElement("span")
+                    const deleteBtn = document.createElement("button")
+                    deleteBtn.type = "button"
+                    deleteBtn.className = "bg-red"
+                    deleteBtn.textContent = "ลบออก"
+
+                    const downloadBtn = document.createElement("button")
+                    downloadBtn.type = "button"
+                    downloadBtn.className = "bg-primary"
+                    downloadBtn.textContent = "เก็บไฟล์"
+                    topEle.appendChild(nameEle)
+                    
+                    let usedText = ""
+                    if(used){
+                        usedText += " ใช้งานอยู่"
+                    }else{
+                        topEle.appendChild(deleteBtn)
+                        deleteBtn.onclick = template_remove_btn_click
+                    }
+                    topEle.appendChild(downloadBtn)
+                    downloadBtn.dataset.online = "false"
+                    downloadBtn.onclick = template_save_btn_click
+
+                    const infoEle = document.createElement("ul")
+                    const versionEle = document.createElement("li")
+                    const detailsEle = document.createElement("li")
+
+                    infoEle.appendChild(versionEle)
+                    infoEle.appendChild(detailsEle)
+                    
+                    itemEle.appendChild(topEle)
+                    itemEle.appendChild(infoEle)
+                    nameEle.innerHTML = `<strong>ชื่อ: ${name}</strong>${usedText==``?``:` (${usedText})`}`
+                    versionEle.innerHTML = `เวอร์ชั่น: ${version}`
+                    detailsEle.innerHTML = `รายละเอียด: ${details}`
+                    itemEle.dataset.item_id = item_id
+                    itemEle.dataset.details = details
+                    itemEle.dataset.name = name
+                    itemEle.dataset.version = version
+                    itemEle.dataset.variable = var_
+                    listEle.appendChild(itemEle)
+                }
+            }
+        }
+        modal = new MODAL()
+        modal.setContent({contentHtml:``})
+        modal.appendContent({node:container})
+        modal.show()
+        LOADING.hide()
+    }
 
         
-        LOADING.hide()
+    async function template_remove_btn_click (e){
+        let parent = e.currentTarget.parentElement.parentElement
+        let { item_id, name, variable, details } = parent.dataset
+        console.log("remove",item_id);
+        LOADING.display()
+        try {
+            let json = {
+                item_id
+            }
+            const res = await postData(
+                "/modbus/templates/delete",
+                "application/json",
+                json)
+            if(res.status=="success")
+            {
+                modal.clear()
+                templateListOnlineBtn_gb.dispatchEvent(new Event("click"))
+                tabRead.dispatchEvent( new Event("click") )
+            }else{
+                throw new Error(res.message);
+            }
+        } catch (error) {
+            console.log(error.message)
+            LOADING.hide()       
+        }        
     }
-    async function assignModbusWriteList() {
-        modbusList.innerHTML = ``
-        ctrlGroup.innerHTML = ``
-        LOADING.hide()
-    }
-    /***
-     * 
-     */
 
+    async function template_download_btn_click (e){
+        if(TEMPLATES_FOR_MOD_READ.length >= MAX_ITEMS["templates"]){ alert("จำนวนเทมเพลตครบ "+ MAX_ITEMS["templates"] +" แล้ว"); return}
+        let parent = e.currentTarget.parentElement.parentElement
+        let { item_id, name, variable, details } = parent.dataset
+        console.log("download",item_id);
+        LOADING.display()
+        try {
+            let template_from_server = await fetch(`https://itcctvpro.com/tboards/3/modbus/templates/?item_id=${item_id}`).then(r=>r.json())
+            if(template_from_server.item_id == item_id)
+            {
+                let json = {
+                    item_id,
+                    data:template_from_server
+                }            
+                const res = await postData("/modbus/templates/download",
+                "application/json",json)
+                if(res.status=="success")
+                {
+                    modal.clear()
+                    templateListOnlineBtn_gb.dispatchEvent(new Event("click"))
+                    tabRead.dispatchEvent( new Event("click") )
+                }else{
+                    throw new Error(res.message);
+                }
+            }else{
+                throw new Error("Error item id");
+            }
+        } catch (error) {
+            console.log(error.message)
+            LOADING.hide() 
+        }
+    }
+
+    async function template_update_btn_click (e){
+        let parent = e.currentTarget.parentElement.parentElement
+        let { item_id, name, variable, details } = parent.dataset
+        console.log("update",item_id);
+        LOADING.display()
+        try {
+            let template_from_server = await fetch(`https://itcctvpro.com/tboards/3/modbus/templates/?item_id=${item_id}`).then(r=>r.json())
+            if(template_from_server.item_id == item_id)
+            {
+                let json = {
+                    item_id,
+                    data:template_from_server
+                }
+                const res = await postData("/modbus/templates/update",
+                "application/json",json)
+                if(res.status=="success")
+                {
+                    modal.clear()
+                    templateListOnlineBtn_gb.dispatchEvent(new Event("click"))
+                    tabRead.dispatchEvent( new Event("click") )
+                }else{
+                    throw new Error(res.message);
+                }
+            }else{
+                throw new Error("Error item id");
+            }
+        } catch (error) {
+            console.log(error.message)
+            LOADING.hide() 
+        }
+    }
+
+    async function template_save_btn_click(e) {
+        LOADING.display()
+        let { online } = e.currentTarget.dataset
+        let parent = e.currentTarget.parentElement.parentElement
+        let { item_id, name, variable, details } = parent.dataset
+        console.log("save",item_id);
+        let templates_details = online=="true"?await fetch(`https://itcctvpro.com/tboards/3/modbus/templates/?item_id=${item_id}`).then(r=>r.json()):
+        online=="false"?await getData(`/modbus/templates/${item_id}.json`):null
+        if(templates_details==null){ LOADING.hide();return }
+        console.log(templates_details)    
+        let str = JSON.stringify(templates_details)
+        const link = document.createElement("a");
+        const file = new Blob([str], { type: 'application/json' });
+        link.href = URL.createObjectURL(file);
+        link.download = `${variable}.json`;
+        link.click();
+        LOADING.hide()
+        URL.revokeObjectURL(link.href);
+    }
+
+    async function uploadCustomTemplate(e) {
+        if(TEMPLATES_FOR_MOD_READ.length >= MAX_ITEMS["templates"]){ alert("จำนวนเทมเพลตครบ "+ MAX_ITEMS["templates"] +" แล้ว"); return}
+        LOADING.display()
+        const parent = e.currentTarget.parentElement
+        let file = parent.querySelector(`[type="file"]`)
+        file = file.files[0]
+        if(file==undefined){alert(`ต้องเลือกไฟล์ .json`); LOADING.hide(); return}
+        const reader = new FileReader();
+        reader.onload = async function () {
+            const readtext = reader.result;
+            if(!stringIsJsonFormat(readtext)){ alert(`ข้อมูลในไฟล์ผิดพลาด`); LOADING.hide(); return }
+            let readJson = JSON.parse(readtext)
+            let keys = Object.keys(readJson)
+            let keysMustHave = ["item_id","version","var","name","details","read","write"] //check keys
+            let c = keysMustHave.reduce((r,t)=>{
+                r+=keys.includes(t)?1:0
+                return r
+            },0)
+            
+            if(c!=keysMustHave.length){ LOADING.hide(); return }
+            let templates = await getModbusReadTemplates()
+            let item_id = readJson["item_id"]
+            let tp_idx = templates.findIndex(x=>x.item_id == item_id)
+            if(tp_idx>=0){ alert("มีเทมเพลตนี้แล้ว!!!");LOADING.hide(); return }
+            
+            let json = {
+                item_id,
+                data:readJson
+            }            
+            const res = await postData("/modbus/templates/download","application/json",json)
+            if(res.status=="success")
+            {
+                LOADING.hide()
+                LOADING.display("อัพโหลดเทมเพลตเรียบร้อย...")
+                setTimeout(async (e)=>{ tabRead.dispatchEvent( new Event("click") ) },1500)
+            }else{
+                alert("Error")
+                LOADING.hide()
+            }
+        }
+        reader.onerror = function () {
+            console.error('Error reading the file');
+            LOADING.hide()
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+
+    /*******/
     function add_new_read_item(id)
     {
         const templates = TEMPLATES_FOR_MOD_READ
@@ -152,6 +493,7 @@
         id = typeof id == "object"?new_id:id
         id = typeof id == "number"?id:new_id
         const itemsAll = [...modbusList.children]
+        if(itemsAll.length >= MAX_ITEMS["modread"]){ alert("จำนวนครบ "+ MAX_ITEMS["modread"] +" แล้ว"); return}
         if(itemsAll.filter(x=>x.dataset.item_id === String(id)).length > 0){ return }
         const itemEle = document.createElement("div")
         itemEle.className = "form-group-v border-basic"
@@ -161,7 +503,7 @@
         buttonsGroup.className = "form-group-h form-group-wrap"
         const deleteBtn = document.createElement("button")
         deleteBtn.type = "button"
-        deleteBtn.className = "btn-red"
+        deleteBtn.className = "bg-red"
         deleteBtn.textContent = "ลบ"
         deleteBtn.onclick = ()=>{
             itemEle.remove()
@@ -171,19 +513,34 @@
         buttonsGroup.appendChild(deleteBtn)
         buttonsGroup.appendChild(itemIdLabel)
 
+        const enableGroup = document.createElement("div")
+        enableGroup.className = "form-group-h form-group-wrap"
+        const enableLabel = document.createElement("label")
+        enableLabel.textContent = "เปิดใช้งาน"
+        const enableCheck = document.createElement("input")
+        enableCheck.type = "checkbox"
+        enableCheck.id = "enabled"
+        enableCheck.checked = true
+        enableCheck.placeholder = enableLabel.textContent
+        enableGroup.appendChild(enableLabel)
+        enableGroup.appendChild(enableCheck)
+
         const varNameGroup = document.createElement("div")
         varNameGroup.className = "form-group-h form-group-wrap"
         const varLabel = document.createElement("label")
         varLabel.textContent = "ชื่อตัวแปร"
         const varInput = document.createElement("input")
         varInput.type = "text"
+        varInput.id = "variable"
         varInput.maxLength = 20
         varInput.required = true
         varInput.placeholder = varLabel.textContent
+        varInput.oninput = inputVariableFilter
         const nameLabel = document.createElement("label")
         nameLabel.textContent = "ป้ายชื่อ"
         const nameInput = document.createElement("input")
         nameInput.type = "text"
+        nameInput.id = "name"
         nameInput.maxLength = 30
         nameInput.required = true
         nameInput.placeholder = nameLabel.textContent
@@ -198,6 +555,7 @@
         slaveLabel.textContent = "สเลฟไอดี"
         const slaveInput = document.createElement("input")
         slaveInput.type = "number"
+        slaveInput.id = "slaveId"
         slaveInput.min = 1
         slaveInput.max = 256
         slaveInput.value = 1
@@ -214,6 +572,7 @@
         itvUnitLabel.textContent = "วินาที"
         const itvInput = document.createElement("input")
         itvInput.type = "number"
+        itvInput.id = "interval"
         itvInput.min = 1
         itvInput.max = 3600
         itvInput.value = 5
@@ -251,6 +610,7 @@
         }
 
         itemEle.appendChild(buttonsGroup)
+        itemEle.appendChild(enableGroup)
         itemEle.appendChild(varNameGroup)
         itemEle.appendChild(slaveGroup)
         itemEle.appendChild(intervalGroup)
@@ -260,9 +620,333 @@
 
         modbusList.appendChild(itemEle)
     }
+
+    function assignModbusReadList(data)
+    {
+        for (const item of data) {
+            const { enabled, id, interval, item_id, name, tp_id } = item || {}
+            const variable = item.var || {}
+            add_new_read_item(item_id)
+            const itemsEle = [...modbusList.children]
+            if(itemsEle[itemsEle.length-1])
+            {
+                const itemEle = itemsEle[itemsEle.length-1]
+                itemEle.querySelector(`#enabled`).checked = enabled
+                itemEle.querySelector(`#variable`).value = variable
+                itemEle.querySelector(`#name`).value = name
+                itemEle.querySelector(`#slaveId`).value = id
+                itemEle.querySelector(`#interval`).value = interval
+                itemEle.querySelector(`#templateSelect`).value = tp_id
+            }
+        }
+    }
+
+    function update_read_items(e){
+        e.preventDefault()
+        const readItems = [...e.currentTarget.children]
+        let arr = []
+        for (const item of readItems) {
+            const item_id = parseInt(item.dataset.item_id)           
+            const enabled_ele = item.querySelector(`#enabled`)
+            const variable_ele = item.querySelector(`#variable`)
+            const name_ele = item.querySelector(`#name`)
+            const slaveId_ele = item.querySelector(`#slaveId`)
+            const interval_ele = item.querySelector(`#interval`)
+            const templateSelect_ele = item.querySelector(`#templateSelect`)
+            arr = [...arr, {
+                var:variable_ele.value,
+                name:name_ele.value,
+                interval:parseInt(interval_ele.value),
+                item_id:item_id,
+                tp_id:parseInt(templateSelect_ele.value),
+                enabled:enabled_ele.checked?1:0,
+                id:parseInt(slaveId_ele.value)
+            }]
+        }
+        console.log(arr);
+        UPDATEDATA.addItem(MAC, "modbusRead", arr)
+        tabRead.dispatchEvent(new Event("click"))
+    }
+
+    /***********************************************************************/
+    async function displayModbusWriteList() {
+        modbusList.innerHTML = ``
+        ctrlGroup.innerHTML = ``
+
+        const addItemBtn = document.createElement("button")
+        addItemBtn.className = `bg-primary`
+        addItemBtn.textContent = `เพิ่มใหม่การเขียน`
+        addItemBtn.onclick = add_new_write_item
+        const submitItemBtn = document.createElement("button")
+        submitItemBtn.className = `bg-blue`
+        submitItemBtn.textContent = `บันทึกรายการ`
+        submitItemBtn.type = `submit`
+        submitItemBtn.setAttribute("form", "modbus-list")
+
+        const btnGroupBottomEle = document.createElement("div")
+        btnGroupBottomEle.className = "form-group-h"
+        btnGroupBottomEle.appendChild(addItemBtn)
+        btnGroupBottomEle.appendChild(submitItemBtn)
+
+        ctrlGroup.appendChild(btnGroupBottomEle)
+
+        modbusList.onsubmit = update_write_items
+
+        if(UPDATEDATA.findItem(MAC, "modbusWrite")){
+            const storageData = UPDATEDATA.findItem(MAC, "modbusWrite")
+            assignModbusWriteList(storageData.data)
+        }else{
+            const modWriteData = await getModbusWrite()
+            assignModbusWriteList(modWriteData)      
+        }
+
+        LOADING.hide()
+    }
+
+    function add_new_write_item(id)
+    {
+        let new_id = new Date().getTime()
+        new_id = Math.floor(new_id/1000)
+        id = typeof id == "object"?new_id:id
+        id = typeof id == "number"?id:new_id
+        const itemsAll = [...modbusList.children]
+        if(itemsAll.length >= MAX_ITEMS["modwrite"]){ alert("จำนวนครบ "+ MAX_ITEMS["modwrite"] +" แล้ว"); return}
+        if(itemsAll.filter(x=>x.dataset.item_id === String(id)).length > 0){ return }
+        const itemEle = document.createElement("div")
+        itemEle.className = "form-group-v border-basic"
+        itemEle.dataset.item_id = id
+        
+        const buttonsGroup = document.createElement("div")
+        buttonsGroup.className = "form-group-h form-group-wrap"
+        const deleteBtn = document.createElement("button")
+        deleteBtn.type = "button"
+        deleteBtn.className = "bg-red"
+        deleteBtn.textContent = "ลบ"
+        deleteBtn.onclick = ()=>{
+            itemEle.remove()
+        }
+        const itemIdLabel = document.createElement("label")
+        itemIdLabel.textContent = `item_id : ${id}`
+        buttonsGroup.appendChild(deleteBtn)
+        buttonsGroup.appendChild(itemIdLabel)
+
+        const enableGroup = document.createElement("div")
+        enableGroup.className = "form-group-h form-group-wrap"
+        const enableLabel = document.createElement("label")
+        enableLabel.textContent = "เปิดใช้งาน"
+        const enableCheck = document.createElement("input")
+        enableCheck.type = "checkbox"
+        enableCheck.id = "enabled"
+        enableCheck.checked = true
+        enableCheck.placeholder = enableLabel.textContent
+        enableGroup.appendChild(enableLabel)
+        enableGroup.appendChild(enableCheck)
+
+        const varNameGroup = document.createElement("div")
+        varNameGroup.className = "form-group-h form-group-wrap"
+        const varLabel = document.createElement("label")
+        varLabel.textContent = "ชื่อตัวแปร"
+        const varInput = document.createElement("input")
+        varInput.type = "text"
+        varInput.id = "variable"
+        varInput.maxLength = 20
+        varInput.required = true
+        varInput.placeholder = varLabel.textContent
+        varInput.oninput = inputVariableFilter
+        const nameLabel = document.createElement("label")
+        nameLabel.textContent = "ป้ายชื่อ"
+        const nameInput = document.createElement("input")
+        nameInput.type = "text"
+        nameInput.id = "name"
+        nameInput.maxLength = 30
+        nameInput.required = true
+        nameInput.placeholder = nameLabel.textContent
+        varNameGroup.appendChild(varLabel)
+        varNameGroup.appendChild(varInput)
+        varNameGroup.appendChild(nameLabel)
+        varNameGroup.appendChild(nameInput)
+
+        const slaveGroup = document.createElement("div")
+        slaveGroup.className = "form-group-h form-group-wrap"
+        const slaveLabel = document.createElement("label")
+        slaveLabel.textContent = "สเลฟไอดี"
+        const slaveInput = document.createElement("input")
+        slaveInput.type = "number"
+        slaveInput.id = "slaveId"
+        slaveInput.min = 1
+        slaveInput.max = 256
+        slaveInput.value = 1
+        slaveInput.required = true
+        slaveInput.placeholder = slaveLabel.textContent
+        slaveGroup.appendChild(slaveLabel)
+        slaveGroup.appendChild(slaveInput)
+
+        const fnGroup = document.createElement("div")
+        fnGroup.className = "form-group-h form-group-wrap"
+        const fnLabel = document.createElement("label")
+        fnLabel.textContent = "ฟังก์ชั่น"
+        const fnSelect = document.createElement("select")
+        fnSelect.id = "fc"
+        fnSelect.required = true
+        const functions = [
+            { name:"Fn05 Write Single Coil", value:"5" },
+            { name:"Fn15 Write Multiple Coils", value:"15" },
+            { name:"Fn06 Write Single Register", value:"6" },
+            { name:"Fn16 Write Multiple Registers", value:"16" },
+            { name:"กำหนดเอง", value:"custom" }
+        ]
+        functions.map(f=>{
+            const option = document.createElement("option")
+            option.textContent = f.name
+            option.value = f.value
+            fnSelect.appendChild(option)
+        })
+        const customFnLabel = document.createElement("label")
+        customFnLabel.textContent = "="
+        const customFnInput = document.createElement("input")
+        customFnInput.type = "number"
+        customFnInput.id = "customFc"
+        customFnInput.min = 1
+        customFnInput.max = 256
+        customFnInput.required = true
+        customFnInput.placeholder = "หมายเลขฟังก์ชั่น"
+        fnGroup.appendChild(fnLabel)
+        fnGroup.appendChild(fnSelect)
+        fnGroup.appendChild(customFnLabel)
+        fnGroup.appendChild(customFnInput)
+
+        const dataTypeGroup = document.createElement("div")
+        dataTypeGroup.className = "form-group-h form-group-wrap"
+        const dataTypeLabel = document.createElement("label")
+        dataTypeLabel.textContent = "ชนิดข้อมูล"
+        const dataTypeSelect = document.createElement("select")
+        dataTypeSelect.id = "dataType"
+        dataTypeSelect.required = true
+        const dataTypes = [
+            { name:"ไม่ส่งข้อมูล", value:"no" },
+            { name:"ตัวเลข", value:"numberic" },
+            { name:"สถานะ", value:"state" }
+        ]
+        dataTypes.map(f=>{
+            const option = document.createElement("option")
+            option.textContent = f.name
+            option.value = f.value
+            dataTypeSelect.appendChild(option)
+        })
+        dataTypeGroup.appendChild(dataTypeLabel)
+        dataTypeGroup.appendChild(dataTypeSelect)
+
+        fnSelect.onchange = ()=>{
+            customFnInput.disabled = fnSelect.value!="custom"
+            for (const opt of dataTypeSelect.options) {
+                if(opt.value=="no"){
+                    opt.disabled = !["custom"].includes(fnSelect.value)
+                    dataTypeSelect.disabled = false
+                }
+                if(opt.value=="numberic"){
+                    opt.disabled = !["6","16","custom"].includes(fnSelect.value)
+                    dataTypeSelect.disabled = true
+                }
+                if(opt.value=="state"){
+                    opt.disabled = !["5","15"].includes(fnSelect.value)
+                    dataTypeSelect.disabled = true
+                }
+            }
+            dataTypeSelect.value = ["6","16","custom"].includes(fnSelect.value)?"numberic":"state"
+            dataTypeSelect.disabled = !["custom"].includes(fnSelect.value)
+        }
+
+        itemEle.appendChild(buttonsGroup)
+        itemEle.appendChild(enableGroup)
+        itemEle.appendChild(varNameGroup)
+        itemEle.appendChild(slaveGroup)
+        itemEle.appendChild(fnGroup)
+        itemEle.appendChild(dataTypeGroup)
+
+        modbusList.appendChild(itemEle)
+        fnSelect.dispatchEvent( new Event("change") )
+    }
+
+    function assignModbusWriteList(data)
+    {
+        console.log("data", data);
+        for (const item of data) {
+            const { item_id, enabled, name, slave_id, fc, data_type } = item || {}
+            const variable = item.var || undefined
+            add_new_write_item(item_id)
+            const itemsAll = [...modbusList.children]
+            if(itemsAll[itemsAll.length-1])
+            {
+                const itemEle = itemsAll[itemsAll.length-1]
+                itemEle.querySelector(`#enabled`).checked = enabled
+                itemEle.querySelector(`#variable`).value = variable
+                itemEle.querySelector(`#name`).value = name
+                itemEle.querySelector(`#slaveId`).value = slave_id
+                itemEle.querySelector(`#fc`).value = ["5","15","6","16"].includes(String(fc))?fc:"custom"
+                itemEle.querySelector(`#fc`).dispatchEvent( new Event("change") )
+                itemEle.querySelector(`#customFc`).value = ["5","15","6","16"].includes(String(fc))?"":fc
+                itemEle.querySelector(`#dataType`).value = data_type
+            }
+        }        
+    }
+
+    function update_write_items(e){
+        e.preventDefault()
+        /*enabled
+variable
+name
+slaveId
+fc
+customFc*/
+        const readItems = [...e.currentTarget.children]
+        let arr = []
+        for (const item of readItems) {
+            const item_id = parseInt(item.dataset.item_id)           
+            const enabled_ele = item.querySelector(`#enabled`)
+            const variable_ele = item.querySelector(`#variable`)
+            const name_ele = item.querySelector(`#name`)
+            const slaveId_ele = item.querySelector(`#slaveId`)
+            const fc_ele = item.querySelector(`#fc`)
+            const customFc_ele = item.querySelector(`#customFc`)
+            const dataType_ele = item.querySelector(`#dataType`)
+            arr = [...arr, {
+                item_id,
+                enabled:enabled_ele.checked?1:0,
+                var:variable_ele.value,
+                name:name_ele.value,
+                slave_id:parseInt(slaveId_ele.value),
+                fc:fc_ele.value=="custom"?parseInt(customFc_ele.value):parseInt(fc_ele.value),
+                data_type:dataType_ele.value
+            }]
+        }
+        console.log(arr);
+        UPDATEDATA.addItem(MAC, "modbusWrite", arr)
+        tabWrite.dispatchEvent(new Event("click"))
+    }
+    /***
+     * 
+     */
+
     async function run() {
-        await main()
-        tabRead.dispatchEvent( new Event("click") )
+        if(!await main()){ return }
+        MAX_ITEMS = await getMaxItems()
+        if(!window.localStorage.getItem(`modbusTabs`)){
+            tabRead.dispatchEvent( new Event("click") )
+        }else{
+            switch (window.localStorage.getItem(`modbusTabs`)) {
+                case "tab-read":
+                    tabRead.dispatchEvent( new Event("click") )
+                    break;                    
+                case "tab-write":
+                    tabWrite.dispatchEvent( new Event("click") )
+                    break;                   
+            
+                default:
+                    tabRead.dispatchEvent( new Event("click") )
+                    break;
+            }
+        } 
+        
     }
     run()    
 </script>

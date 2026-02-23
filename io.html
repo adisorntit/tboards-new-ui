@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -42,7 +43,7 @@
     const outputsFormEle = document.querySelector(`#outputs-form`)
 
     async function run() {
-        await main()
+        if(!await main()){ return }
 
         if(UPDATEDATA.findItem(MAC, "inputs")){
             const storageData = UPDATEDATA.findItem(MAC, "inputs")
@@ -58,7 +59,7 @@
             console.log(storageData);            
             assignOutputs(storageData.data)
         }else{
-            const ret = await geOutputs()       
+            const ret = await getOutputs()       
             assignOutputs(ret)
         }
 
@@ -120,6 +121,7 @@
             varInput.id = "var"
             varInput.placeholder = "ชื่อตัวแปร"
             varInput.value = variable
+            varInput.oninput = inputVariableFilter
             const varLabel = document.createElement("label")
             varLabel.textContent = `ชื่อตัวแปร`
             const varGroupEle = document.createElement("div")
@@ -146,7 +148,7 @@
         }
         const submitBtn = document.createElement("button")
         submitBtn.type = "submit"
-        submitBtn.className = `btn-primary`
+        submitBtn.className = `bg-primary`
         submitBtn.style.maxWidth = "max-content"
         submitBtn.textContent = "บันทีก"
         inputsFormEle.appendChild(submitBtn)
@@ -165,6 +167,7 @@
             varInput.id = "var"
             varInput.placeholder = "ชื่อตัวแปร"
             varInput.value = variable
+            varInput.oninput = inputVariableFilter
             const varLabel = document.createElement("label")
             varLabel.textContent = `ชื่อตัวแปร`
             const varGroupEle = document.createElement("div")
@@ -205,7 +208,7 @@
         }
         const submitBtn = document.createElement("button")
         submitBtn.type = "submit"
-        submitBtn.className = `btn-primary`
+        submitBtn.className = `bg-primary`
         submitBtn.style.maxWidth = "max-content"
         submitBtn.textContent = "บันทีก"
         outputsFormEle.appendChild(submitBtn)

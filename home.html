@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span><span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -21,7 +22,58 @@
             </div>
             <div class="m-right">
                 <div class="m-right-inner">
-                    
+                    <!-- ------------------------------ -->
+                     <div class="form-group-h">
+                         <label for="">Heap</label>
+                         <div class="progressEle">
+                            <div class="progressLevelParent">
+                                <div class="progressLevel"></div>
+                            </div>
+                            <span class="progressText">?</span>
+                         </div>
+                     </div>
+                     <div class="form-group-v">
+                        <div class="form-group-v border-basic">
+                            <h3>อินพุต (on board)</h3>
+                            <div id="inputItems" class="form-group-h form-group-wrap">
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <h3>เอาท์พุต (on board)</h3>
+                            <div id="outputItems" class="form-group-h form-group-wrap">
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <h3>มอดบัสเซ็นเซอร์</h3>
+                            <div id="modbusReadItems" class="form-group-v">
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <h3>Ping</h3>
+                            <div id="pingItems" class="form-group-h form-group-wrap">
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <h3>ปุ่มเสมือน</h3>
+                            <div id="actionBtnItems" class="form-group-h form-group-wrap">
+                            </div>
+                        </div>
+                        <div class="form-group-v border-basic">
+                            <h3>MODBUS TCP/IP SERVER</h3>
+                            <button class="bg-blue" style="margin-right: auto;" id="registerListDisplayBtn">แสดง</button>
+                            <ul id="modbusTcpServerInfoEle" data-display="minimize">
+                                <li>ไอพีแอดเดรส: <span id="ip">?</span></li>
+                                <li>พอร์ทเชื่อมต่อ: <span id="port">502</span></li>
+                                <li>สเลฟไอดี: <span id="slave_id">1</span></li>
+                                <li>
+                                    <h5>รายการ Register</h5>
+                                    <ul id="reg_list">
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                     </div>
+                    <!-- ------------------------------ -->
                 </div>
             </div>
         </div>
@@ -29,8 +81,411 @@
 </body>
 <script src="./js/common.js"></script>
 <script>
+    const inputItemsEle = document.querySelector(`#inputItems`)
+    const outputItemsEle = document.querySelector(`#outputItems`)
+    const modbusReadItemsEle = document.querySelector(`#modbusReadItems`)
+    const pingItemsEle = document.querySelector(`#pingItems`)
+    const actionBtnItemsEle = document.querySelector(`#actionBtnItems`)
+    const ipEle = document.querySelector(`#ip`)
+    const registerListDisplayBtn = document.querySelector(`#registerListDisplayBtn`)
+    const reg_listEle = document.querySelector(`#reg_list`)
+    const modbusTcpServerInfoEle = document.querySelector(`#modbusTcpServerInfoEle`)
+    const heapValueEle = document.querySelector(`.progressText`)
+    const progressLevel = document.querySelector(`.progressLevel`)
+
+    registerListDisplayBtn.onclick = ()=>{
+        const now = modbusTcpServerInfoEle.dataset.display
+        if(now=="minimize"){
+            modbusTcpServerInfoEle.dataset.display = "maximize"
+            registerListDisplayBtn.textContent = "ซ่อน"
+        }else if(now=="maximize"){
+            modbusTcpServerInfoEle.dataset.display = "minimize"
+            registerListDisplayBtn.textContent = "แสดง"
+        }else{
+            modbusTcpServerInfoEle.dataset.display = "minimize"
+            registerListDisplayBtn.textContent = "แสดง"
+        }
+    }
+
+    async function build(params) {
+        let inputs = []
+        let outputs = []
+        let modReads = []
+        let actionBtns = []
+        let pings = []
+        
+        const nw = await getNw()
+        ipEle.innerHTML = nw&&nw.info&&nw.info.local&&nw.info.local.ipaddress ? nw.info.local.ipaddress : "?"
+
+        LOADING.display("กำลังโหลดข้อมูลอินพุต...")
+        if(UPDATEDATA.findItem(MAC, "inputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "inputs")
+            inputs = storageData.data
+        }else{
+            inputs = await getInputs()
+        }
+        
+        LOADING.display("กำลังโหลดข้อมูลเอาท์พุต...")
+        if(UPDATEDATA.findItem(MAC, "outputs")){
+            const storageData = UPDATEDATA.findItem(MAC, "outputs")
+            outputs = storageData.data
+        }else{
+            outputs = await getOutputs()
+        }
+
+        LOADING.display("กำลังโหลดข้อมูลการอ่านมอดบัส...")
+        if(UPDATEDATA.findItem(MAC, "modbusRead")){
+            const storageData = UPDATEDATA.findItem(MAC, "modbusRead")
+            modReads = storageData.data
+        }else{
+            modReads = await getModbusRead()
+        }
+        let templates = await getModbusReadTemplates()
+        let modReads2 = await getModbusRead2()
+
+        LOADING.display("กำลังโหลดข้อมูลปุ่มเสมือน...")
+        if(UPDATEDATA.findItem(MAC, "actionBtn")){
+            const storageData = UPDATEDATA.findItem(MAC, "actionBtn")
+            actionBtns = storageData.data
+        }else{
+            actionBtns = await getActionbtn()
+        }
+        LOADING.display("กำลังโหลดข้อมูลการ Ping...")
+        if(UPDATEDATA.findItem(MAC, "ping")){
+            const storageData = UPDATEDATA.findItem(MAC, "ping")
+            pings = storageData.data
+        }else{
+            pings = await getPing()
+        }
+        console.log(inputs,
+        outputs,
+        modReads,
+        actionBtns,
+        pings,
+        templates);
+
+        inputs.map((x,xi)=>{
+            const itemEle = document.createElement("div")
+            itemEle.className = "squareItem"
+            const nameEle = document.createElement("span")
+            nameEle.className = "nameEle"
+            const statusEle = document.createElement("span")
+            statusEle.className = "status"
+            nameEle.textContent = x.name==""?x.var:x.name
+            statusEle.textContent = "?"
+            itemEle.appendChild(nameEle)
+            itemEle.appendChild(statusEle)
+            itemEle.dataset.status = "unknown"
+            itemEle.dataset.variable = x.var
+            inputItemsEle.appendChild(itemEle)
+        })
+
+        outputs.map((x,xi)=>{
+            const itemEle = document.createElement("div")
+            itemEle.className = "squareItem"
+            const nameEle = document.createElement("span")
+            nameEle.className = "nameEle"
+            const statusEle = document.createElement("span")
+            statusEle.className = "status"
+            nameEle.textContent = x.name==""?x.var:x.name
+            statusEle.textContent = "?"
+            itemEle.appendChild(nameEle)
+            itemEle.appendChild(statusEle)
+            itemEle.dataset.status = "unknown"
+            itemEle.dataset.variable = x.var
+
+            itemEle.onclick = async ()=>{
+                if(["on","off"].includes(itemEle.dataset.status)){
+                    const state = itemEle.dataset.status == "on" ? "off" : "on"
+                    const index = xi
+                    LOADING.display()
+                    const res = await postData("/output/cmd", "application/json", { index, state })
+                    if(res.status=="success"){
+                        LOADING.hide()
+                    }else{
+                        alert("Error")
+                        LOADING.hide()
+                    }
+                }
+            }
+            outputItemsEle.appendChild(itemEle)
+        })
+
+        modReads.map(x=>{
+            const { item_id, name, tp_id } = x || {}
+            const _var = x.var || undefined
+            const tp = templates.filter(t=>t.item_id === tp_id)
+            const itemEle = document.createElement("div")
+            itemEle.id = "sensorItem"
+            itemEle.className = "form-group-v border-basic"
+            itemEle.dataset.variable = _var
+            const listGroupEle = document.createElement("div")
+            listGroupEle.id = "listGroupEle"
+            listGroupEle.className = "form-group-h form-group-wrap"
+            itemEle.innerHTML = `<h4>${name}</h4>`
+            itemEle.appendChild(listGroupEle)
+            if(tp.length === 1){
+                const tp_var = tp[0]["var"] || undefined
+                const tp_name = tp[0]["name"] || undefined
+                const tp_read = tp[0]["read"] || undefined
+                for (const read of tp_read) {
+                    const { list, replace, type, qty } = read || {}
+                    for (const li of list) {
+                        const li_var = li["var"] || undefined
+                        const li_unit = li["unit"] || undefined
+                        const li_name = li["name"] || undefined
+                        const liEle = document.createElement("div")
+                        liEle.className = "rectangleItem"
+                        const nameEle = document.createElement("span")
+                        nameEle.className = "nameEle"
+                        const valueEle = document.createElement("span")
+                        valueEle.className = "valueEle"
+                        const unitEle = document.createElement("span")
+                        unitEle.className = "unitEle"
+                        liEle.appendChild(nameEle)
+                        liEle.appendChild(valueEle)
+                        liEle.appendChild(unitEle)
+                        liEle.dataset.status = "unknown"
+                        liEle.dataset.variable = li_var
+                        nameEle.textContent = li_name
+                        valueEle.textContent = "?"
+                        unitEle.textContent = li_unit
+                        listGroupEle.appendChild(liEle)
+                    }
+                }
+            }
+            modbusReadItemsEle.appendChild(itemEle)
+        })
+
+        pings.map((x,xi)=>{
+            const itemEle = document.createElement("div")
+            itemEle.className = "rectangleItem"
+            const nameEle = document.createElement("span")
+            nameEle.className = "nameEle"
+            const statusEle = document.createElement("span")
+            statusEle.className = "status"
+            nameEle.textContent = x.name==""?x.var:x.name
+            statusEle.textContent = "?"
+            itemEle.appendChild(nameEle)
+            itemEle.appendChild(statusEle)
+            itemEle.dataset.status = "unknown"
+            itemEle.dataset.variable = x.var
+            pingItemsEle.appendChild(itemEle)
+        })
+        
+        actionBtns.map((x,xi)=>{
+            const itemEle = document.createElement("div")
+            itemEle.className = "rectangleItem"
+            const nameEle = document.createElement("span")
+            nameEle.className = "nameEle"
+            nameEle.textContent = x.name
+            itemEle.appendChild(nameEle)
+            itemEle.dataset.status = "off"
+            itemEle.dataset.item_id = x.item_id
+            actionBtnItemsEle.appendChild(itemEle)
+
+            itemEle.onclick = async ()=>{
+                let json = { item_id:x.item_id }
+                LOADING.display()
+                const res = await postData("/actionpress", "application/json", json)
+                if(res.status=="success"){
+                    LOADING.hide()
+                }else{
+                    alert("Error")
+                    LOADING.hide()
+                }
+            }
+        })
+
+        let reg_list_inputs = `<li>
+            <h5>อินพุต</h5>
+            <ul>
+            ${inputs.map((x,i)=>`<li>
+                ${x.name==""?x.var:x.name} : 1x${i} (PLC Address ${PlcAddressFormat("1",i)}) [R]
+                </li>`).join("")}
+            </ul>
+        </li>`
+        let reg_list_outputs = `<li>
+            <h5>เอาท์พุต</h5>
+            <ul>
+            ${outputs.map((x,i)=>`<li>
+                ${x.name==""?x.var:x.name} : 0x${i} (PLC Address ${PlcAddressFormat("0",i)}) [R/W]
+                </li>`).join("")}
+            </ul>
+        </li>`
+        let reg_list_modbus = `<li>
+            <h5>เซ็นเซอร์มอดบัส</h5>
+            <ul>
+            ${typeof modReads2=="object"&&Array.isArray(modReads2)?modReads2.map((x,i)=>{
+                let template = templates.filter(t=>t.item_id==x.tp_id)
+                template=template.length==1?template[0]:null;
+                if(template!=null)
+                {
+                    return `<li>
+                    ${x.name==""?x.var:x.name}
+                    <ul>
+                        ${x.mem_read.map((rd,rdi)=>{
+                            const readItem = template.read[rdi]
+                            const readAddress = readItem.address
+                            const readList = readItem.list
+                            return rd.map((item,idx)=>{
+                                const addr = readAddress+idx
+                                let readItem = readList.filter(r=>r.address==addr)
+                                readItem=readItem.length==1?readItem[0]:null
+                                //datatype format
+                                let formatArrange = ""
+                                let datatype_ = ""
+                                if(readItem!=null){
+                                    const {format,datatype} = readItem
+                                    if(format!=undefined)
+                                    {
+                                        let formatting = formatItems.filter(f=>f.value==format)
+                                        let bit = datatype.indexOf("64")>=0?64:datatype.indexOf("32")>=0?32:16
+                                        datatype_ = datatype;
+                                        formatArrange = formatting.length==1?formatting[0]["title"][bit]:""
+                                    }
+                                }
+
+                                const { prefix,reg_addr } = item
+                                const pefixPlc = prefix.split("x")[0]
+                                return `<li>${readItem==null?'______ ':`${readItem.name} : `}${prefix}${reg_addr} (PLC Address ${PlcAddressFormat(pefixPlc,reg_addr)})${formatArrange==""?"":` [${datatype_.toUpperCase()} : ${formatArrange}]`} [${["0x","4x"].includes(prefix)?'R/W':'R'}]</li>`
+                            }).join("")
+                        }
+                        ).join("")}
+                    </ul>
+                    </li>`
+                }
+            }).join(""):""}
+            </ul>
+        </li>`
+
+        reg_listEle.innerHTML = reg_list_inputs
+        reg_listEle.innerHTML += reg_list_outputs
+        reg_listEle.innerHTML += reg_list_modbus
+    }
+
+    let datatypeItems = [ "int16", "uint16", "int32", "uint32", "float32", "int64", "uint64", "float64" ]
+    let formatItems = [
+        { value:"big", title:{
+            16:"AB",
+            32:"AB CD",
+            64:"AB CD EF GH"
+        } },
+        { value:"lit", title:{
+            16:"BA",
+            32:"DC BA",
+            64:"HG FE DC BA"
+        } },
+        { value:"big-swap", title:{
+            32:"BA DC",
+            64:"BA DC FE HG"
+        } },
+        { value:"lit-swap", title:{
+            32:"CD AB",
+            64:"GH EF CD AB"
+        } },
+    ]
+
+    function PlcAddressFormat(prefix, num) {
+        return prefix + num.toString().padStart(4, '0');
+    }
+
     async function run() {
-        await main()
+        if(!await main()){ return }
+        await build()
+
+        setInterval(async()=>{
+            const heapUsagePercentage = await getHeap_usage()
+            heapValueEle.textContent = String(heapUsagePercentage) + "%"
+            progressLevel.style.width = String(heapUsagePercentage) + "%"
+            // console.log(heapUsagePercentage);
+            
+        },3000)
+        setInterval(async()=>{
+            const data = await getRealtime_data()
+            const inputs_rt = data.inputs
+            const outputs_rt = data.outputs
+            const modbusRead_rt = data.modbus
+            const ping_rt = data.ping
+            if(inputs_rt){
+                const childs = [...inputItemsEle.children]
+                const inputKeys = Object.keys(inputs_rt)
+                if(childs.length == inputKeys.length)
+                {
+                    for (const el of childs) {
+                        const variable = el.dataset.variable                      
+                        if(inputs_rt[variable])
+                        {
+                            const status = inputs_rt[variable].state
+                            el.querySelector(`.status`).textContent = String(status).toUpperCase()
+                            el.dataset.status = status
+                        }
+                    }
+                }
+            }
+            
+            if(outputs_rt){
+                const childs = [...outputItemsEle.children]
+                const keys = Object.keys(outputs_rt)
+                if(childs.length == keys.length)
+                {
+                    for (const el of childs) {
+                        const variable = el.dataset.variable                      
+                        if(outputs_rt[variable])
+                        {
+                            const status = outputs_rt[variable].state
+                            el.querySelector(`.status`).textContent = String(status).toUpperCase()
+                            el.dataset.status = status
+                        }
+                    }
+                }
+            }
+
+            if(modbusRead_rt){
+                // console.log(modbusRead_rt)                
+                const childs = [...modbusReadItemsEle.children]
+                const sensorVars = Object.keys(modbusRead_rt)
+                for (const variable of sensorVars) {
+                    const ele = childs.filter(x=>x.dataset.variable == variable)
+                    if(ele.length===1){
+                        const sensorEle = ele[0]
+                        const listGroupEle = sensorEle.querySelector(`#listGroupEle`)
+                        const readItems = modbusRead_rt[variable]["read"]
+                        const readVars = Object.keys(readItems)
+                        const listChilds = [...listGroupEle.children]
+                        for (const key of readVars) {
+                            const ele = listChilds.filter(x=>x.dataset.variable == key)
+                            if(ele.length===1){
+                                const itemEle = ele[0]
+                                const values = readItems[key]["value"]
+                                const value = values.length===2?values[1]:values[0]
+                                const valueEle = itemEle.querySelector(`.valueEle`)
+                                valueEle.textContent = value
+                                if(values.length==2){
+                                    itemEle.dataset.status = String(value).toLowerCase()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(ping_rt){
+                const childs = [...pingItemsEle.children]
+                const keys = Object.keys(ping_rt)
+                for (const key of keys) {
+                    const ele = childs.filter(x=>x.dataset.variable === key)
+                    if(ele.length==1)
+                    {
+                        const itemEle = ele[0]
+                        const status = ping_rt[key].result ? "success" : "failed"
+                        itemEle.querySelector(`.status`).textContent = String(status).toUpperCase()
+                        itemEle.dataset.status = status
+                    }
+                }
+            }
+        },3000)
+
         LOADING.hide()        
     }
     run()

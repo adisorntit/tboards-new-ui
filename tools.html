@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./css/style.css">
     <title>T-BOARD GEN3 (UI2026)</title>
 </head>
@@ -10,7 +11,7 @@
     <div class="container">
         <div class="top">
             <h3> <span id="top-title"></span> <span id="top-pagename"></span></h3>
-            <div class="btn-group"></div>
+            <div class="bg-group"></div>
         </div>
         <div class="middle">
             <div class="m-left">
@@ -29,7 +30,7 @@
                             <form id="timezone-form">
                                 <div class="form-group-h">
                                     <input type="number" name="time-offset" id="time-offset" placeholder="เช่น +7" value="0">
-                                    <button class="btn-primary">บันทึก</button>
+                                    <button class="bg-primary">บันทึก</button>
                                 </div>
                             </form>
                         </div>
@@ -39,14 +40,14 @@
                             <form id="update-password-form">
                                 <div class="form-group-h">
                                     <input type="password" name="password" id="password" placeholder="กรอกรหัสผ่านใหม่">
-                                    <button class="btn-primary">บันทึก</button>
+                                    <button class="bg-primary">บันทึก</button>
                                 </div>
                             </form>
                         </div>
                         
                         <div style="padding: .3rem;" class="border-basic">
                             <h4>ดาวน์โหลด การตั้งค่า</h4>
-                            <button class="btn-primary" id="settingsDownloadBtn">ดาวน์โหลด ⬇</button>
+                            <button class="bg-primary" id="settingsDownloadBtn">ดาวน์โหลด ⬇</button>
                         </div>
                         
                         <div style="padding: .3rem;" class="border-basic">
@@ -54,7 +55,7 @@
                             <form id="import-settings-form">
                                 <div class="form-group-h">
                                     <input type="file" name="file-settings" id="file-settings" placeholder="เลือกไฟล์ settings.json">
-                                    <button class="btn-primary" type="submit">อัพโหลด</button>
+                                    <button class="bg-primary" type="submit">อัพโหลด</button>
                                 </div>
                             </form>
                          </div>
@@ -81,14 +82,14 @@
                                     <input type="file" name="file-littlefs" id="file-littlefs" placeholder="เลือกไฟล์ settings.json" accept=".bin" required>
                                 </div>
                                 <div class="form-group-h">
-                                    <button class="btn-primary">อัพโหลด</button>
+                                    <button class="bg-primary">อัพโหลด</button>
                                 </div>
                             </form>
                          </div>
 
                          <div style="padding: .3rem;" class="border-basic">
-                             <button id="rebootBtn" class="btn-yellow">รีบู๊ต 🔃</button>
-                            <button id="resetBtn" class="btn-red">รีเซ็ต 🔄</button>
+                             <button id="rebootBtn" class="bg-yellow">รีบู๊ต 🔃</button>
+                            <button id="resetBtn" class="bg-red">รีเซ็ต 🔄</button>
                          </div>
 
                      </div>
@@ -144,16 +145,19 @@
     uploadFirmwareFormEle.onsubmit = man_upgrade
 
     async function run() {
-        await main() 
+        if(!await main()){ return } 
         /*-------------------*/
+        LOADING.display("กำลังโหลดข้อมูลเวลา...")
         const retTimeOffset = await getTimeOffset()
         if(retTimeOffset){
             timeOffsetEle.value = retTimeOffset.timeoffset
         }
+        LOADING.display("กำลังโหลดข้อมูลเวอร์ชั่นเฟิร์มแวร์...")
         const retFirmwareVersion = await getFirmwareVersion()
         if(retFirmwareVersion){
             firmwaresDetailsEle.innerHTML = retFirmwareVersion
         }
+        LOADING.display("กำลังโหลดข้อมูลรายการเฟิร์มแวร์...")
         const retFirmwaresList = await getFirmwaresList()
         if(retFirmwaresList&&typeof retFirmwaresList == "object"&&retFirmwaresList.result){
             firmwaresListEle.innerHTML = ``
@@ -161,7 +165,7 @@
             {
                 for (const item of retFirmwaresList.result) {
                     const itemEle = document.createElement("button")
-                    itemEle.className = "btn-dark3"
+                    itemEle.className = "bg-dark3"
                     itemEle.style.justifyContent = "start"
                     itemEle.innerHTML = `<span>(เวอร์ชั่น ${item.version})</span> <small>${item.note}</small>`
                     itemEle.dataset.urlfs = item.url.fs
@@ -197,9 +201,9 @@
     }
 
     async function exportSetting() {
-        LOADING.display()
+        LOADING.display("กำลังดึงข้อมูลทั้งหมด...")
         let inputs = await getInputs()
-        let outputs = await geOutputs()
+        let outputs = await getOutputs()
         let actionbtn = await getActionbtn()
         let ping = await getPing()
         let modread = await getModbusRead()
@@ -229,95 +233,18 @@
             const file = fileSettings.files[0]
             const str = await readStringFromFile(file)
             const json = stringIsJsonFormat(str)
-            if(json){
-                LOADING.display(`กำลังนำเข้าข้อมูลการตั้งค่า...`)
-                const keys = Object.keys(json)
-                let all = 0
-                let c = 0
-                for (const key of keys) {
-                    const readItem = json[key]
-                    if(key=="template_items")
-                    {
-                        for (let tp_idx = 0; tp_idx < readItem.length; tp_idx++) {
-                            const tpItem = readItem[tp_idx];
-                            all+=1
-                            let jsonBody = {
-                                item_id:tpItem["item_id"],
-                                data:tpItem
-                            }
-                            const ret = await postData("/modbus/templates/download","application/json",jsonBody)
-                            if(ret&&ret.status&&ret.status=="success"){ c++ }
-                        }
-                    }else{
-                        let _path = get_post_path(key)
-                        if(_path!="")
-                        {
-                            all+=1
-                            const ret = await postData(_path,"application/json",readItem)
-                            if(ret&&ret.status&&ret.status=="success"){ c++ }
-                        }
-                    }
-                    
-                    LOADING.display(`นำเข้า ${all} สำเร็จ ${c} ... ต้องรีบู๊ตอุปกรณ์`)
-                }
-
-
-                setTimeout(()=>{ reboot() }, 2000)
-                setTimeout(()=>{
-                    window.location.reload()
-                }, 6000)
-                
-            }else{
-                LOADING.display(`ข้อมูลการตั้งค่าผิดพลาด...`)
-            }
+            await applySettings(json)
         }
         
-    }
-
-
-    function get_post_path(content){
-        let path = ""
-        switch (content) {
-            case "inputs":
-                path = "/inputs"
-                break;
-            case "outputs":
-                path = "/outputs"
-                break;
-            case "actionbtn":
-                path = "/actionbtn"
-                break;
-            case "ping":
-                path = "/ping"
-                break;
-            case "modread":
-                path = "/mod_read"
-                break;
-            case "modwrite":
-                path = "/mod_write"
-                break;
-            case "contact":
-                path = "/contact"
-                break;
-            case "scene":
-                path = "/scene"
-                break;
-            case "timeoffset":
-                path = "/timeoffset"
-                break;
-            case "dataslots":
-                path = "/dataslots"
-                break;
-            default:
-                break;
-        }
-        return path
     }
 
     async function man_upgrade(e) {
         e.preventDefault()
         let c = confirm(`ยืนยันการอัพเกรดเฟิร์มแวร์...`)
         if(!c){return}
+        console.log(fileFirmwareEle.files[0]);
+        console.log(fileLittlefsEle.files[0]);
+        
         const fw = fileFirmwareEle.files[0];
         const fs = fileLittlefsEle.files[0];
         if(fw==undefined){ alert("ยังไม่ได้เลือกไฟล์ \"firmware.bin\""); return; }
@@ -335,14 +262,21 @@
                 let body = fw
                 let ret_fw = await fetch(HOST+"/upgrade_fw",{
                     method:"POST",
+                    headers:{
+                        "authorization":`Basic ${AUTH}`
+                    },
                     body
                 })
             
                 if(!ret_fw.ok){ alert("อัพเกรด firmware.bin ผิดพลาด"); LOADING.hide();return; }
                 LOADING.display("กำลังอัพเกรด littlefs.bin ...")
-                body = document.getElementById('fs').files[0];
+                // body = document.getElementById('fs').files[0];
+                body = fs
                 let ret_fs = await fetch(HOST+"/upgrade_fs",{
                     method:"POST",
+                    headers:{
+                        "authorization":`Basic ${AUTH}`
+                    },
                     body
                 })
                 if(!ret_fs.ok){ alert("อัพเกรด littlefs.bin ผิดพลาด"); LOADING.hide();return; }
